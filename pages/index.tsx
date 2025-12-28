@@ -8,9 +8,6 @@ import confetti from 'canvas-confetti'
 
 type FamilyMember = Database['public']['Tables']['family_members']['Row']
 type Chore = Database['public']['Tables']['chores']['Row']
-type ChoreCompletionInsert = Database['public']['Tables']['chore_completions']['Insert']
-type TokenInsert = Database['public']['Tables']['tokens']['Insert']
-type ChoreUpdate = Database['public']['Tables']['chores']['Update']
 
 interface ChoreWithAssignee extends Chore {
   assignee: FamilyMember | null
@@ -68,40 +65,38 @@ export default function Dashboard() {
 
     try {
       // Create completion record
-      const completionData: ChoreCompletionInsert = {
-        chore_id: chore.id,
-        member_id: chore.assignee.id,
-        date: new Date().toISOString().split('T')[0],
-      }
-      
-      const { error: completionError } = await supabase
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { error: completionError } = await (supabase as any)
         .from('chore_completions')
-        .insert(completionData)
+        .insert({
+          chore_id: chore.id,
+          member_id: chore.assignee.id,
+          date: new Date().toISOString().split('T')[0],
+        })
 
       if (completionError) throw completionError
 
       // Award tokens if Quinten
       if (chore.assignee.initials === 'Q') {
-        const tokenData: TokenInsert = {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        await (supabase as any).from('tokens').insert({
           member_id: chore.assignee.id,
           amount: chore.token_value,
           reason: `Completed: ${chore.name}`,
-        }
-        await supabase.from('tokens').insert(tokenData)
+        })
       }
 
       // Rotate to next person
       const nextIdx = (chore.current_member_idx + 1) % chore.eligible_member_ids.length
-      const updateData: ChoreUpdate = {
-        current_member_idx: nextIdx,
-        last_completed_at: new Date().toISOString(),
-        delegated_to: null,
-        delegation_note: null,
-      }
-      
-      const { error: updateError } = await supabase
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { error: updateError } = await (supabase as any)
         .from('chores')
-        .update(updateData)
+        .update({
+          current_member_idx: nextIdx,
+          last_completed_at: new Date().toISOString(),
+          delegated_to: null,
+          delegation_note: null,
+        })
         .eq('id', chore.id)
 
       if (updateError) throw updateError
