@@ -8,6 +8,9 @@ import confetti from 'canvas-confetti'
 
 type FamilyMember = Database['public']['Tables']['family_members']['Row']
 type Chore = Database['public']['Tables']['chores']['Row']
+type ChoreCompletionInsert = Database['public']['Tables']['chore_completions']['Insert']
+type TokenInsert = Database['public']['Tables']['tokens']['Insert']
+type ChoreUpdate = Database['public']['Tables']['chores']['Update']
 
 interface ChoreWithAssignee extends Chore {
   assignee: FamilyMember | null
@@ -65,35 +68,40 @@ export default function Dashboard() {
 
     try {
       // Create completion record
+      const completionData: ChoreCompletionInsert = {
+        chore_id: chore.id,
+        member_id: chore.assignee.id,
+        date: new Date().toISOString().split('T')[0],
+      }
+      
       const { error: completionError } = await supabase
         .from('chore_completions')
-        .insert({
-          chore_id: chore.id,
-          member_id: chore.assignee.id,
-          date: new Date().toISOString().split('T')[0],
-        })
+        .insert(completionData)
 
       if (completionError) throw completionError
 
       // Award tokens if Quinten
       if (chore.assignee.initials === 'Q') {
-        await supabase.from('tokens').insert({
+        const tokenData: TokenInsert = {
           member_id: chore.assignee.id,
           amount: chore.token_value,
           reason: `Completed: ${chore.name}`,
-        })
+        }
+        await supabase.from('tokens').insert(tokenData)
       }
 
       // Rotate to next person
       const nextIdx = (chore.current_member_idx + 1) % chore.eligible_member_ids.length
+      const updateData: ChoreUpdate = {
+        current_member_idx: nextIdx,
+        last_completed_at: new Date().toISOString(),
+        delegated_to: null,
+        delegation_note: null,
+      }
+      
       const { error: updateError } = await supabase
         .from('chores')
-        .update({
-          current_member_idx: nextIdx,
-          last_completed_at: new Date().toISOString(),
-          delegated_to: null,
-          delegation_note: null,
-        })
+        .update(updateData)
         .eq('id', chore.id)
 
       if (updateError) throw updateError
