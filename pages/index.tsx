@@ -40,18 +40,18 @@ export default function Dashboard() {
 
       if (choresError) throw choresError
 
-      // Match assignees to chores
-      const choresWithAssignees: ChoreWithAssignee[] = []
-      
-      if (choresData && membersData) {
-        for (const chore of choresData) {
-          const assigneeId = chore.eligible_member_ids[chore.current_member_idx]
-          const assignee = membersData.find((m) => m.id === assigneeId) || null
-          choresWithAssignees.push({ ...chore, assignee })
-        }
-      }
+      // Explicitly type the data
+      const typedChoresData = (choresData || []) as Chore[]
+      const typedMembersData = (membersData || []) as FamilyMember[]
 
-      setMembers(membersData || [])
+      // Match assignees to chores
+      const choresWithAssignees: ChoreWithAssignee[] = typedChoresData.map((chore) => {
+        const assigneeId = chore.eligible_member_ids[chore.current_member_idx]
+        const assignee = typedMembersData.find((m) => m.id === assigneeId) || null
+        return { ...chore, assignee }
+      })
+
+      setMembers(typedMembersData)
       setChores(choresWithAssignees)
     } catch (error) {
       console.error('Error loading data:', error)
