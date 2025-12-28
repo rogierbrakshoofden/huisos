@@ -41,11 +41,11 @@ export default function Dashboard() {
       if (choresError) throw choresError
 
       // Match assignees to chores
-      const choresWithAssignees = choresData?.map((chore) => {
+      const choresWithAssignees: ChoreWithAssignee[] = (choresData || []).map((chore) => {
         const assigneeId = chore.eligible_member_ids[chore.current_member_idx]
-        const assignee = membersData?.find((m) => m.id === assigneeId) || null
+        const assignee = (membersData || []).find((m) => m.id === assigneeId) || null
         return { ...chore, assignee }
-      }) || []
+      })
 
       setMembers(membersData || [])
       setChores(choresWithAssignees)
@@ -128,7 +128,7 @@ export default function Dashboard() {
           {/* Today's Chores */}
           <Card>
             <CardHeader>
-              <CardTitle>Today's Chores</CardTitle>
+              <CardTitle>Today&apos;s Chores</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
