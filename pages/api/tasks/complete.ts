@@ -31,12 +31,15 @@ export default async function handler(
       return res.status(400).json({ error: 'completedBy is required' })
     }
 
-    // Fetch the task first to get token_value - cast result to any
-    const { data: taskData, error: fetchError } = await (supabase as any)
+    // Fetch the task first to get token_value
+    const result: any = await (supabase as any)
       .from('tasks')
       .select()
       .eq('id', taskId)
       .single()
+
+    const taskData = result.data
+    const fetchError = result.error
 
     if (fetchError || !taskData) {
       console.error('Task fetch error:', fetchError)
@@ -48,21 +51,22 @@ export default async function handler(
     const completedAt = new Date().toISOString()
     const completedDate = completedAt.split('T')[0]
 
-    // Update task with completion info - cast update payload to any
-    const updatePayload: any = {
-      completed: true,
-      completed_at: completedAt,
-      completed_by: completedBy,
-      completed_date: completedDate,
-      updated_at: completedAt,
-    }
-
-    const { data: updatedTask, error: updateError } = await (supabase as any)
+    // Update task with completion info
+    const updateResult: any = await (supabase as any)
       .from('tasks')
-      .update(updatePayload)
+      .update({
+        completed: true,
+        completed_at: completedAt,
+        completed_by: completedBy,
+        completed_date: completedDate,
+        updated_at: completedAt,
+      })
       .eq('id', taskId)
       .select()
       .single()
+
+    const updatedTask = updateResult.data
+    const updateError = updateResult.error
 
     if (updateError || !updatedTask) {
       console.error('Task update error:', updateError)
