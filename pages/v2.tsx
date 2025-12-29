@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useApp, selectTasksForUser, selectEventsForUser } from '@/lib/context-v2'
 import { useRealtimeSync } from '@/lib/hooks-v2-enhanced'
+import { useToast, ToastContainer } from '@/lib/toast'
 import { UserSwitcher } from '@/components/user-switcher'
 import { BottomNav } from '@/components/bottom-nav'
 import { AddButton } from '@/components/add-button'
@@ -36,6 +37,7 @@ export default function V2Dashboard() {
 function V2DashboardContent() {
   const { state, dispatch } = useApp()
   const { isLoading, isOnline, syncError } = useRealtimeSync()
+  const { toasts, toast, setToasts } = useToast()
   const tasks = selectTasksForUser(state)
   const events = selectEventsForUser(state)
   const activeTab = state.activeTab
@@ -118,6 +120,7 @@ function V2DashboardContent() {
           type: 'UPDATE_TASK',
           payload: updatedTask as Task,
         })
+        toast('Task updated ✓', 'success')
       } else {
         // Create new task
         const response = await fetch('/api/tasks/create', {
@@ -139,10 +142,12 @@ function V2DashboardContent() {
           type: 'ADD_TASK',
           payload: newTask as Task,
         })
+        toast('Task created ✓', 'success')
       }
     } catch (err) {
       const message = (err as Error).message
       setApiError(message)
+      toast(message, 'error')
       dispatch({
         type: 'SET_SYNC_ERROR',
         payload: `Failed to save task: ${message}`,
@@ -184,6 +189,7 @@ function V2DashboardContent() {
           type: 'UPDATE_EVENT',
           payload: updatedEvent as Event,
         })
+        toast('Event updated ✓', 'success')
       } else {
         // Create new event
         const response = await fetch('/api/events/create', {
@@ -205,10 +211,12 @@ function V2DashboardContent() {
           type: 'ADD_EVENT',
           payload: newEvent as Event,
         })
+        toast('Event created ✓', 'success')
       }
     } catch (err) {
       const message = (err as Error).message
       setApiError(message)
+      toast(message, 'error')
       dispatch({
         type: 'SET_SYNC_ERROR',
         payload: `Failed to save event: ${message}`,
@@ -241,9 +249,11 @@ function V2DashboardContent() {
       }
 
       dispatch({ type: 'DELETE_TASK', payload: taskId })
+      toast('Task deleted', 'success')
     } catch (err) {
       const message = (err as Error).message
       setApiError(message)
+      toast(message, 'error')
       dispatch({
         type: 'SET_SYNC_ERROR',
         payload: `Failed to delete task: ${message}`,
@@ -276,9 +286,11 @@ function V2DashboardContent() {
       }
 
       dispatch({ type: 'DELETE_EVENT', payload: eventId })
+      toast('Event deleted', 'success')
     } catch (err) {
       const message = (err as Error).message
       setApiError(message)
+      toast(message, 'error')
       dispatch({
         type: 'SET_SYNC_ERROR',
         payload: `Failed to delete event: ${message}`,
@@ -318,6 +330,8 @@ function V2DashboardContent() {
         payload: completedTask as Task,
       })
 
+      toast('🎉 Task completed! Tokens earned!', 'success')
+
       confetti({
         particleCount: 100,
         spread: 70,
@@ -327,6 +341,7 @@ function V2DashboardContent() {
       console.error('Failed to complete task:', err)
       const message = (err as Error).message
       setApiError(message)
+      toast(message, 'error')
       dispatch({
         type: 'SET_SYNC_ERROR',
         payload: `Failed: ${message}`,
@@ -365,6 +380,8 @@ function V2DashboardContent() {
       })
 
       setIsRewardStoreOpen(false)
+      toast('🎁 Reward redeemed! Parents will review soon.', 'success')
+
       confetti({
         particleCount: 50,
         spread: 60,
@@ -372,7 +389,7 @@ function V2DashboardContent() {
       })
     } catch (err) {
       const message = (err as Error).message
-      setApiError(message)
+      toast(message, 'error')
       throw err
     }
   }
@@ -400,9 +417,10 @@ function V2DashboardContent() {
           payload: { ...claim, status: 'approved' },
         })
       }
+      toast('Reward approved ✓', 'success')
     } catch (err) {
       const message = (err as Error).message
-      setApiError(message)
+      toast(message, 'error')
       throw err
     }
   }
@@ -427,12 +445,17 @@ function V2DashboardContent() {
       if (claim) {
         dispatch({
           type: 'UPDATE_REWARD_CLAIM',
-          payload: { ...claim, status: 'claimed', claimed_at: new Date().toISOString() },
+          payload: {
+            ...claim,
+            status: 'claimed',
+            claimed_at: new Date().toISOString(),
+          },
         })
       }
+      toast('Reward claimed! Enjoy! 🎉', 'success')
     } catch (err) {
       const message = (err as Error).message
-      setApiError(message)
+      toast(message, 'error')
       throw err
     }
   }
@@ -677,6 +700,11 @@ function V2DashboardContent() {
             : (state.activeUserId as string)
         }
         onRedeem={handleRedeemReward}
+      />
+
+      <ToastContainer
+        toasts={toasts}
+        onRemove={(id) => setToasts((prev) => prev.filter((t) => t.id !== id))}
       />
 
       <div className="fixed bottom-32 left-4 text-xs text-slate-600 pointer-events-none">
