@@ -84,7 +84,7 @@ export default async function handler(
     }
 
     // Log activity
-    await supabase.from('activity_log').insert({
+    await (supabase as any).from('activity_log').insert({
       actor_id: created_by,
       action_type: 'task_created',
       entity_type: 'task',
