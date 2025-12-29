@@ -48,17 +48,19 @@ export default async function handler(
       return res.status(400).json({ error: 'At least one member is required' })
     }
 
-    // Insert event - cast entire result to any
+    // Insert event - cast payload to any
+    const insertPayload: any = {
+      title: title.trim(),
+      datetime: datetime || null,
+      all_day,
+      member_ids,
+      recurring: recurring || null,
+      notes: notes?.trim() || null,
+    }
+
     const result: any = await (supabase as any)
       .from('events')
-      .insert({
-        title: title.trim(),
-        datetime: datetime || null,
-        all_day,
-        member_ids,
-        recurring: recurring || null,
-        notes: notes?.trim() || null,
-      })
+      .insert(insertPayload)
       .select()
       .single()
 
