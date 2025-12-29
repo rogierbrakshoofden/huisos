@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useReducer, useEffect, ReactNode } from 'react'
-import { AppState, Task, Event, ActivityLogEntry, FamilyMember, RewardClaim, Subtask } from '@/types/huisos-v2'
+import { AppState, Task, Event, ActivityLogEntry, FamilyMember, RewardClaim, Subtask, TabType } from '@/types/huisos-v2'
 
 const AppContext = createContext<{
   state: AppState
@@ -19,7 +19,7 @@ export type AppAction =
   | { type: 'DELETE_EVENT'; payload: string }
   | { type: 'SET_ACTIVITY_LOG'; payload: ActivityLogEntry[] }
   | { type: 'ADD_LOG_ENTRY'; payload: ActivityLogEntry }
-  | { type: 'SET_ACTIVE_TAB'; payload: 'work' | 'events' | 'log' | 'rewards' }
+  | { type: 'SET_ACTIVE_TAB'; payload: TabType }
   | { type: 'OPEN_TASK_MODAL'; payload: Task | null }
   | { type: 'OPEN_EVENT_MODAL'; payload: Event | null }
   | { type: 'CLOSE_MODAL' }
@@ -31,6 +31,7 @@ export type AppAction =
   | { type: 'SET_REWARD_CLAIMS'; payload: RewardClaim[] }
   | { type: 'ADD_REWARD_CLAIM'; payload: RewardClaim }
   | { type: 'UPDATE_REWARD_CLAIM'; payload: RewardClaim }
+  | { type: 'SET_SUBTASKS'; payload: Map<string, Subtask[]> }
   | { type: 'ADD_SUBTASK'; payload: { taskId: string; subtask: Subtask } }
   | { type: 'UPDATE_SUBTASK'; payload: { taskId: string; subtask: Subtask } }
   | { type: 'DELETE_SUBTASK'; payload: { taskId: string; subtaskId: string } }
@@ -133,6 +134,8 @@ function appReducer(state: AppState, action: AppAction): AppState {
         ...state,
         rewardClaims: state.rewardClaims.map(c => (c.id === action.payload.id ? action.payload : c)),
       }
+    case 'SET_SUBTASKS':
+      return { ...state, subtasks: action.payload }
     case 'ADD_SUBTASK': {
       const { taskId, subtask } = action.payload
       const existing = state.subtasks.get(taskId) || []
