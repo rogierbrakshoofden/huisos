@@ -89,7 +89,7 @@ export default async function handler(
         }
       })
       .sort((a: LeaderboardEntry, b: LeaderboardEntry) => b.tokenCount - a.tokenCount)
-      .map((entry, index) => ({
+      .map((entry: LeaderboardEntry, index: number) => ({
         ...entry,
         rank: index + 1,
       }))
