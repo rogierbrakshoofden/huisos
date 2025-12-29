@@ -48,17 +48,19 @@ export default async function handler(
       return res.status(400).json({ error: 'At least one member is required' })
     }
 
-    // Insert event
+    // Insert event - use type assertion to handle Supabase types
+    const eventData: any = {
+      title: title.trim(),
+      datetime: datetime || null,
+      all_day,
+      member_ids,
+      recurring: recurring || null,
+      notes: notes?.trim() || null,
+    }
+
     const { data: event, error: eventError } = await supabase
       .from('events')
-      .insert({
-        title: title.trim(),
-        datetime: datetime || null,
-        all_day,
-        member_ids,
-        recurring: recurring || null,
-        notes: notes?.trim() || null,
-      })
+      .insert([eventData])
       .select()
       .single()
 
@@ -77,7 +79,7 @@ export default async function handler(
         title: event.title,
         datetime: event.datetime,
       },
-    })
+    } as any)
 
     return res.status(201).json(event as Event)
   } catch (err) {
