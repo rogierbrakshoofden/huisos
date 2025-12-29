@@ -44,13 +44,16 @@ export default async function handler(
     if (notes !== undefined) updates.notes = notes?.trim() || null
     updates.updated_at = new Date().toISOString()
 
-    // Cast supabase to any to bypass type checking for this operation
-    const { data: eventData, error: eventError } = await (supabase as any)
+    // Update event - cast entire result to any
+    const result: any = await (supabase as any)
       .from('events')
       .update(updates)
       .eq('id', eventId)
       .select()
       .single()
+
+    const eventData = result.data
+    const eventError = result.error
 
     if (eventError || !eventData) {
       console.error('Event update error:', eventError)
