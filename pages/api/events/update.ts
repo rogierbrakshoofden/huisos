@@ -63,7 +63,7 @@ export default async function handler(
     const event = eventData as Event
 
     // Log activity
-    await supabase.from('activity_log').insert({
+    await (supabase as any).from('activity_log').insert({
       actor_id: actorId || 'system',
       action_type: 'event_edited',
       entity_type: 'event',
