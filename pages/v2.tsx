@@ -101,44 +101,10 @@ function V2DashboardContent() {
 
         dispatch({
           type: 'UPDATE_TASK',
-          payload: { ...editingTask, ...taskData },
+          payload: { ...editingTask, ...taskData } as Task,
         })
       } else {
-        // Create new task
-        void (async () => {
-          const insertPayload: any = {
-            title: taskData.title,
-            description: taskData.description,
-            recurrence_type: taskData.recurrence_type || 'once',
-            frequency: taskData.frequency,
-            due_date: taskData.due_date,
-            assignee_ids: taskData.assignee_ids || [],
-            token_value: taskData.token_value || 1,
-            notes: taskData.notes,
-            created_by: activeUserId,
-          }
-
-          const { data: newTask } = await (supabase
-            .from('tasks')
-            .insert(insertPayload) as any)
-            .select()
-            .single()
-
-          if (newTask) {
-            dispatch({ type: 'CREATE_TASK', payload: newTask })
-
-            // Log activity
-            await (supabase.from('activity_log').insert({
-              actor_id: activeUserId,
-              action_type: 'task_created',
-              entity_type: 'task',
-              entity_id: newTask.id,
-              metadata: { title: taskData.title, token_value: taskData.token_value },
-            }) as any)
-          }
-        })()
-
-        // Create optimistic update
+        // Create new task - optimistic update
         const newTask: Task = {
           id: `temp-${Date.now()}`,
           title: taskData.title || '',
@@ -160,7 +126,43 @@ function V2DashboardContent() {
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
         }
-        dispatch({ type: 'CREATE_TASK', payload: newTask })
+        dispatch({ type: 'ADD_TASK', payload: newTask })
+
+        // Persist to DB in background
+        void (async () => {
+          const insertPayload: any = {
+            title: taskData.title,
+            description: taskData.description,
+            recurrence_type: taskData.recurrence_type || 'once',
+            frequency: taskData.frequency,
+            due_date: taskData.due_date,
+            assignee_ids: taskData.assignee_ids || [],
+            token_value: taskData.token_value || 1,
+            notes: taskData.notes,
+            created_by: activeUserId,
+          }
+
+          const { data: createdTask } = await (supabase
+            .from('tasks')
+            .insert(insertPayload) as any)
+            .select()
+            .single()
+
+          if (createdTask) {
+            // Replace optimistic task with real one
+            dispatch({ type: 'DELETE_TASK', payload: newTask.id })
+            dispatch({ type: 'ADD_TASK', payload: createdTask })
+
+            // Log activity
+            await (supabase.from('activity_log').insert({
+              actor_id: activeUserId,
+              action_type: 'task_created',
+              entity_type: 'task',
+              entity_id: createdTask.id,
+              metadata: { title: taskData.title, token_value: taskData.token_value },
+            }) as any)
+          }
+        })()
       }
     } catch (err) {
       dispatch({
@@ -215,7 +217,7 @@ function V2DashboardContent() {
 
       dispatch({
         type: 'UPDATE_TASK',
-        payload: completedTask,
+        payload: completedTask as Task,
       })
 
       confetti({
