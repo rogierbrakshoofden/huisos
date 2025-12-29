@@ -31,7 +31,7 @@ export async function fetchTasks(userId?: string): Promise<Task[]> {
     .order('created_at', { ascending: false })
 
   if (error) throw error
-  return data as Task[] || []
+  return (data as Task[]) || []
 }
 
 /**
@@ -48,7 +48,7 @@ export async function fetchEvents(userId?: string): Promise<Event[]> {
     .order('datetime', { ascending: true })
 
   if (error) throw error
-  return data as Event[] || []
+  return (data as Event[]) || []
 }
 
 /**
@@ -86,23 +86,25 @@ export async function createTask(
   task: Partial<Task>,
   userId: string
 ): Promise<Task> {
+  const insertPayload: Record<string, any> = {
+    title: task.title || '',
+    description: task.description,
+    recurrence_type: task.recurrence_type || 'once',
+    frequency: task.frequency,
+    recurrence_end_date: task.recurrence_end_date,
+    assignee_ids: task.assignee_ids || [],
+    rotation_enabled: task.rotation_enabled || false,
+    rotation_index: task.rotation_index || 0,
+    rotation_exclude_ids: task.rotation_exclude_ids || [],
+    due_date: task.due_date,
+    notes: task.notes,
+    token_value: task.token_value || 1,
+    created_by: userId,
+  }
+
   const { data, error } = await supabase
     .from('tasks')
-    .insert({
-      title: task.title || '',
-      description: task.description,
-      recurrence_type: task.recurrence_type || 'once',
-      frequency: task.frequency,
-      recurrence_end_date: task.recurrence_end_date,
-      assignee_ids: task.assignee_ids || [],
-      rotation_enabled: task.rotation_enabled || false,
-      rotation_index: task.rotation_index || 0,
-      rotation_exclude_ids: task.rotation_exclude_ids || [],
-      due_date: task.due_date,
-      notes: task.notes,
-      token_value: task.token_value || 1,
-      created_by: userId,
-    } as any)
+    .insert(insertPayload)
     .select()
     .single()
 
@@ -114,12 +116,31 @@ export async function createTask(
  * Update an existing task
  */
 export async function updateTask(taskId: string, updates: Partial<Task>): Promise<Task> {
+  const updatePayload: Record<string, any> = {
+    updated_at: new Date().toISOString(),
+  }
+
+  // Only add fields that are provided
+  if (updates.title !== undefined) updatePayload.title = updates.title
+  if (updates.description !== undefined) updatePayload.description = updates.description
+  if (updates.recurrence_type !== undefined) updatePayload.recurrence_type = updates.recurrence_type
+  if (updates.frequency !== undefined) updatePayload.frequency = updates.frequency
+  if (updates.recurrence_end_date !== undefined) updatePayload.recurrence_end_date = updates.recurrence_end_date
+  if (updates.assignee_ids !== undefined) updatePayload.assignee_ids = updates.assignee_ids
+  if (updates.rotation_enabled !== undefined) updatePayload.rotation_enabled = updates.rotation_enabled
+  if (updates.rotation_index !== undefined) updatePayload.rotation_index = updates.rotation_index
+  if (updates.rotation_exclude_ids !== undefined) updatePayload.rotation_exclude_ids = updates.rotation_exclude_ids
+  if (updates.completed !== undefined) updatePayload.completed = updates.completed
+  if (updates.completed_at !== undefined) updatePayload.completed_at = updates.completed_at
+  if (updates.completed_by !== undefined) updatePayload.completed_by = updates.completed_by
+  if (updates.completed_date !== undefined) updatePayload.completed_date = updates.completed_date
+  if (updates.due_date !== undefined) updatePayload.due_date = updates.due_date
+  if (updates.notes !== undefined) updatePayload.notes = updates.notes
+  if (updates.token_value !== undefined) updatePayload.token_value = updates.token_value
+
   const { data, error } = await supabase
     .from('tasks')
-    .update({
-      ...updates,
-      updated_at: new Date().toISOString(),
-    } as any)
+    .update(updatePayload)
     .eq('id', taskId)
     .select()
     .single()
@@ -152,7 +173,7 @@ export async function completeTask(taskId: string, userId: string): Promise<Task
       completed_by: userId,
       completed_date: new Date().toISOString().split('T')[0],
       updated_at: new Date().toISOString(),
-    } as any)
+    })
     .eq('id', taskId)
     .select()
     .single()
@@ -172,7 +193,7 @@ export async function completeTask(taskId: string, userId: string): Promise<Task
       amount: task.token_value,
       reason: `Completed: ${task.title}`,
       task_completion_id: taskId,
-    } as any)
+    })
   }
 
   // Log activity
@@ -221,7 +242,7 @@ export async function createEvent(
       all_day: event.all_day || false,
       member_ids: event.member_ids || [],
       notes: event.notes,
-    } as any)
+    })
     .select()
     .single()
 
@@ -233,12 +254,19 @@ export async function createEvent(
  * Update an event
  */
 export async function updateEvent(eventId: string, updates: Partial<Event>): Promise<Event> {
+  const updatePayload: Record<string, any> = {
+    updated_at: new Date().toISOString(),
+  }
+
+  if (updates.title !== undefined) updatePayload.title = updates.title
+  if (updates.datetime !== undefined) updatePayload.datetime = updates.datetime
+  if (updates.all_day !== undefined) updatePayload.all_day = updates.all_day
+  if (updates.member_ids !== undefined) updatePayload.member_ids = updates.member_ids
+  if (updates.notes !== undefined) updatePayload.notes = updates.notes
+
   const { data, error } = await supabase
     .from('events')
-    .update({
-      ...updates,
-      updated_at: new Date().toISOString(),
-    } as any)
+    .update(updatePayload)
     .eq('id', eventId)
     .select()
     .single()
@@ -265,7 +293,13 @@ export async function deleteEvent(eventId: string): Promise<void> {
 export async function logActivity(log: Omit<ActivityLogEntry, 'id' | 'created_at'>): Promise<void> {
   const { error } = await supabase
     .from('activity_log')
-    .insert(log as any)
+    .insert({
+      actor_id: log.actor_id,
+      action_type: log.action_type,
+      entity_type: log.entity_type,
+      entity_id: log.entity_id,
+      metadata: log.metadata,
+    })
 
   if (error) throw error
 }
@@ -286,7 +320,7 @@ export async function createSubtask(
       title,
       description,
       order_index: orderIndex,
-    } as any)
+    })
     .select()
     .single()
 
@@ -301,12 +335,20 @@ export async function updateSubtask(
   subtaskId: string,
   updates: Partial<Subtask>
 ): Promise<Subtask> {
+  const updatePayload: Record<string, any> = {
+    updated_at: new Date().toISOString(),
+  }
+
+  if (updates.title !== undefined) updatePayload.title = updates.title
+  if (updates.description !== undefined) updatePayload.description = updates.description
+  if (updates.completed !== undefined) updatePayload.completed = updates.completed
+  if (updates.completed_at !== undefined) updatePayload.completed_at = updates.completed_at
+  if (updates.completed_by !== undefined) updatePayload.completed_by = updates.completed_by
+  if (updates.order_index !== undefined) updatePayload.order_index = updates.order_index
+
   const { data, error } = await supabase
     .from('subtasks')
-    .update({
-      ...updates,
-      updated_at: new Date().toISOString(),
-    } as any)
+    .update(updatePayload)
     .eq('id', subtaskId)
     .select()
     .single()
@@ -338,7 +380,7 @@ export async function completeSubtask(subtaskId: string, userId: string): Promis
       completed_at: new Date().toISOString(),
       completed_by: userId,
       updated_at: new Date().toISOString(),
-    } as any)
+    })
     .eq('id', subtaskId)
     .select()
     .single()
