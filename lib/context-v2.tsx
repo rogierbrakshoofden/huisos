@@ -1,1 +1,194 @@
-import React, { createContext, useContext, useReducer, useEffect, ReactNode } from 'react'\nimport { AppState, Task, Event, ActivityLogEntry, FamilyMember } from '@/types/huisos-v2'\n\nconst AppContext = createContext<{\n  state: AppState\n  dispatch: React.Dispatch<AppAction>\n} | null>(null)\n\nexport type AppAction =\n  | { type: 'SET_ACTIVE_USER'; payload: string | 'everybody' }\n  | { type: 'SET_FAMILY_MEMBERS'; payload: FamilyMember[] }\n  | { type: 'SET_TASKS'; payload: Task[] }\n  | { type: 'ADD_TASK'; payload: Task }\n  | { type: 'UPDATE_TASK'; payload: Task }\n  | { type: 'DELETE_TASK'; payload: string }\n  | { type: 'SET_EVENTS'; payload: Event[] }\n  | { type: 'ADD_EVENT'; payload: Event }\n  | { type: 'UPDATE_EVENT'; payload: Event }\n  | { type: 'DELETE_EVENT'; payload: string }\n  | { type: 'SET_ACTIVITY_LOG'; payload: ActivityLogEntry[] }\n  | { type: 'ADD_LOG_ENTRY'; payload: ActivityLogEntry }\n  | { type: 'SET_ACTIVE_TAB'; payload: 'work' | 'events' | 'log' }\n  | { type: 'OPEN_TASK_MODAL'; payload?: Task }\n  | { type: 'OPEN_EVENT_MODAL'; payload?: Event }\n  | { type: 'CLOSE_MODAL' }\n  | { type: 'SET_EDITING_TASK'; payload: string | undefined }\n  | { type: 'SET_ONLINE'; payload: boolean }\n  | { type: 'SET_LAST_SYNCED'; payload: Date }\n  | { type: 'SET_SYNC_ERROR'; payload: string | undefined }\n  | { type: 'SET_LOADING'; payload: boolean }\n\nconst initialState: AppState = {\n  activeUserId: 'everybody',\n  familyMembers: [],\n  tasks: [],\n  subtasks: new Map(),\n  events: [],\n  activityLog: [],\n  tokens: [],\n  rewards: [],\n  presence: [],\n  activeTab: 'work',\n  modalOpen: null,\n  selectedTaskForEdit: null,\n  isOnline: typeof navigator !== 'undefined' ? navigator.onLine : true,\n  lastSyncedAt: null,\n  isLoading: true,\n}\n\nfunction appReducer(state: AppState, action: AppAction): AppState {\n  switch (action.type) {\n    case 'SET_ACTIVE_USER':\n      return { ...state, activeUserId: action.payload }\n    case 'SET_FAMILY_MEMBERS':\n      return { ...state, familyMembers: action.payload }\n    case 'SET_TASKS':\n      return { ...state, tasks: action.payload }\n    case 'ADD_TASK':\n      return { ...state, tasks: [...state.tasks, action.payload] }\n    case 'UPDATE_TASK':\n      return {\n        ...state,\n        tasks: state.tasks.map(t => (t.id === action.payload.id ? action.payload : t)),\n      }\n    case 'DELETE_TASK':\n      return {\n        ...state,\n        tasks: state.tasks.filter(t => t.id !== action.payload),\n      }\n    case 'SET_EVENTS':\n      return { ...state, events: action.payload }\n    case 'ADD_EVENT':\n      return { ...state, events: [...state.events, action.payload] }\n    case 'UPDATE_EVENT':\n      return {\n        ...state,\n        events: state.events.map(e => (e.id === action.payload.id ? action.payload : e)),\n      }\n    case 'DELETE_EVENT':\n      return {\n        ...state,\n        events: state.events.filter(e => e.id !== action.payload),\n      }\n    case 'SET_ACTIVITY_LOG':\n      return { ...state, activityLog: action.payload }\n    case 'ADD_LOG_ENTRY':\n      return {\n        ...state,\n        activityLog: [action.payload, ...state.activityLog].slice(0, 1000),\n      }\n    case 'SET_ACTIVE_TAB':\n      return { ...state, activeTab: action.payload }\n    case 'OPEN_TASK_MODAL':\n      return {\n        ...state,\n        modalOpen: 'task',\n        selectedTaskForEdit: action.payload,\n        editingTaskId: action.payload?.id,\n      }\n    case 'OPEN_EVENT_MODAL':\n      return { ...state, modalOpen: 'event' }\n    case 'CLOSE_MODAL':\n      return {\n        ...state,\n        modalOpen: null,\n        selectedTaskForEdit: null,\n        editingTaskId: undefined,\n      }\n    case 'SET_EDITING_TASK':\n      return { ...state, editingTaskId: action.payload }\n    case 'SET_ONLINE':\n      return { ...state, isOnline: action.payload }\n    case 'SET_LAST_SYNCED':\n      return { ...state, lastSyncedAt: action.payload }\n    case 'SET_SYNC_ERROR':\n      return { ...state, syncError: action.payload }\n    case 'SET_LOADING':\n      return { ...state, isLoading: action.payload }\n    default:\n      return state\n  }\n}\n\ninterface AppProviderProps {\n  children: ReactNode\n}\n\nexport function AppProvider({ children }: AppProviderProps) {\n  const [state, dispatch] = useReducer(appReducer, initialState)\n\n  useEffect(() => {\n    if (typeof window === 'undefined') return\n    const savedUserId = localStorage.getItem('huisos_v2_active_user_id')\n    if (savedUserId) {\n      dispatch({ type: 'SET_ACTIVE_USER', payload: savedUserId })\n    }\n  }, [])\n\n  useEffect(() => {\n    if (typeof window === 'undefined') return\n    localStorage.setItem('huisos_v2_active_user_id', state.activeUserId)\n  }, [state.activeUserId])\n\n  useEffect(() => {\n    if (typeof window === 'undefined') return\n    const handleOnline = () => dispatch({ type: 'SET_ONLINE', payload: true })\n    const handleOffline = () => dispatch({ type: 'SET_ONLINE', payload: false })\n    window.addEventListener('online', handleOnline)\n    window.addEventListener('offline', handleOffline)\n    return () => {\n      window.removeEventListener('online', handleOnline)\n      window.removeEventListener('offline', handleOffline)\n    }\n  }, [])\n\n  return (\n    <AppContext.Provider value={{ state, dispatch }}>\n      {children}\n    </AppContext.Provider>\n  )\n}\n\nexport function useApp() {\n  const context = useContext(AppContext)\n  if (!context) {\n    throw new Error('useApp must be used within AppProvider')\n  }\n  return context\n}\n\nexport function selectTasksForUser(state: AppState): Task[] {\n  if (state.activeUserId === 'everybody') {\n    return state.tasks\n  }\n  return state.tasks.filter(task =>\n    task.assignee_ids.includes(state.activeUserId as string)\n  )\n}\n\nexport function selectEventsForUser(state: AppState): Event[] {\n  if (state.activeUserId === 'everybody') {\n    return state.events\n  }\n  return state.events.filter(event =>\n    event.member_ids.includes(state.activeUserId as string)\n  )\n}\n\nexport function selectActiveUser(state: AppState): FamilyMember | null {\n  if (state.activeUserId === 'everybody') {\n    return null\n  }\n  return state.familyMembers.find(m => m.id === state.activeUserId) || null\n}\n"
+import React, { createContext, useContext, useReducer, useEffect, ReactNode } from 'react'
+import { AppState, Task, Event, ActivityLogEntry, FamilyMember } from '@/types/huisos-v2'
+
+const AppContext = createContext<{
+  state: AppState
+  dispatch: React.Dispatch<AppAction>
+} | null>(null)
+
+export type AppAction =
+  | { type: 'SET_ACTIVE_USER'; payload: string | 'everybody' }
+  | { type: 'SET_FAMILY_MEMBERS'; payload: FamilyMember[] }
+  | { type: 'SET_TASKS'; payload: Task[] }
+  | { type: 'ADD_TASK'; payload: Task }
+  | { type: 'UPDATE_TASK'; payload: Task }
+  | { type: 'DELETE_TASK'; payload: string }
+  | { type: 'SET_EVENTS'; payload: Event[] }
+  | { type: 'ADD_EVENT'; payload: Event }
+  | { type: 'UPDATE_EVENT'; payload: Event }
+  | { type: 'DELETE_EVENT'; payload: string }
+  | { type: 'SET_ACTIVITY_LOG'; payload: ActivityLogEntry[] }
+  | { type: 'ADD_LOG_ENTRY'; payload: ActivityLogEntry }
+  | { type: 'SET_ACTIVE_TAB'; payload: 'work' | 'events' | 'log' }
+  | { type: 'OPEN_TASK_MODAL'; payload?: Task }
+  | { type: 'OPEN_EVENT_MODAL'; payload?: Event }
+  | { type: 'CLOSE_MODAL' }
+  | { type: 'SET_EDITING_TASK'; payload: string | undefined }
+  | { type: 'SET_ONLINE'; payload: boolean }
+  | { type: 'SET_LAST_SYNCED'; payload: Date }
+  | { type: 'SET_SYNC_ERROR'; payload: string | undefined }
+  | { type: 'SET_LOADING'; payload: boolean }
+
+const initialState: AppState = {
+  activeUserId: 'everybody',
+  familyMembers: [],
+  tasks: [],
+  subtasks: new Map(),
+  events: [],
+  activityLog: [],
+  tokens: [],
+  rewards: [],
+  presence: [],
+  activeTab: 'work',
+  modalOpen: null,
+  selectedTaskForEdit: null,
+  isOnline: typeof navigator !== 'undefined' ? navigator.onLine : true,
+  lastSyncedAt: null,
+  isLoading: true,
+}
+
+function appReducer(state: AppState, action: AppAction): AppState {
+  switch (action.type) {
+    case 'SET_ACTIVE_USER':
+      return { ...state, activeUserId: action.payload }
+    case 'SET_FAMILY_MEMBERS':
+      return { ...state, familyMembers: action.payload }
+    case 'SET_TASKS':
+      return { ...state, tasks: action.payload }
+    case 'ADD_TASK':
+      return { ...state, tasks: [...state.tasks, action.payload] }
+    case 'UPDATE_TASK':
+      return {
+        ...state,
+        tasks: state.tasks.map(t => (t.id === action.payload.id ? action.payload : t)),
+      }
+    case 'DELETE_TASK':
+      return {
+        ...state,
+        tasks: state.tasks.filter(t => t.id !== action.payload),
+      }
+    case 'SET_EVENTS':
+      return { ...state, events: action.payload }
+    case 'ADD_EVENT':
+      return { ...state, events: [...state.events, action.payload] }
+    case 'UPDATE_EVENT':
+      return {
+        ...state,
+        events: state.events.map(e => (e.id === action.payload.id ? action.payload : e)),
+      }
+    case 'DELETE_EVENT':
+      return {
+        ...state,
+        events: state.events.filter(e => e.id !== action.payload),
+      }
+    case 'SET_ACTIVITY_LOG':
+      return { ...state, activityLog: action.payload }
+    case 'ADD_LOG_ENTRY':
+      return {
+        ...state,
+        activityLog: [action.payload, ...state.activityLog].slice(0, 1000),
+      }
+    case 'SET_ACTIVE_TAB':
+      return { ...state, activeTab: action.payload }
+    case 'OPEN_TASK_MODAL':
+      return {
+        ...state,
+        modalOpen: 'task',
+        selectedTaskForEdit: action.payload,
+        editingTaskId: action.payload?.id,
+      }
+    case 'OPEN_EVENT_MODAL':
+      return { ...state, modalOpen: 'event' }
+    case 'CLOSE_MODAL':
+      return {
+        ...state,
+        modalOpen: null,
+        selectedTaskForEdit: null,
+        editingTaskId: undefined,
+      }
+    case 'SET_EDITING_TASK':
+      return { ...state, editingTaskId: action.payload }
+    case 'SET_ONLINE':
+      return { ...state, isOnline: action.payload }
+    case 'SET_LAST_SYNCED':
+      return { ...state, lastSyncedAt: action.payload }
+    case 'SET_SYNC_ERROR':
+      return { ...state, syncError: action.payload }
+    case 'SET_LOADING':
+      return { ...state, isLoading: action.payload }
+    default:
+      return state
+  }
+}
+
+interface AppProviderProps {
+  children: ReactNode
+}
+
+export function AppProvider({ children }: AppProviderProps) {
+  const [state, dispatch] = useReducer(appReducer, initialState)
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const savedUserId = localStorage.getItem('huisos_v2_active_user_id')
+    if (savedUserId) {
+      dispatch({ type: 'SET_ACTIVE_USER', payload: savedUserId })
+    }
+  }, [])
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    localStorage.setItem('huisos_v2_active_user_id', state.activeUserId)
+  }, [state.activeUserId])
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const handleOnline = () => dispatch({ type: 'SET_ONLINE', payload: true })
+    const handleOffline = () => dispatch({ type: 'SET_ONLINE', payload: false })
+    window.addEventListener('online', handleOnline)
+    window.addEventListener('offline', handleOffline)
+    return () => {
+      window.removeEventListener('online', handleOnline)
+      window.removeEventListener('offline', handleOffline)
+    }
+  }, [])
+
+  return (
+    <AppContext.Provider value={{ state, dispatch }}>
+      {children}
+    </AppContext.Provider>
+  )
+}
+
+export function useApp() {
+  const context = useContext(AppContext)
+  if (!context) {
+    throw new Error('useApp must be used within AppProvider')
+  }
+  return context
+}
+
+export function selectTasksForUser(state: AppState): Task[] {
+  if (state.activeUserId === 'everybody') {
+    return state.tasks
+  }
+  return state.tasks.filter(task =>
+    task.assignee_ids.includes(state.activeUserId as string)
+  )
+}
+
+export function selectEventsForUser(state: AppState): Event[] {
+  if (state.activeUserId === 'everybody') {
+    return state.events
+  }
+  return state.events.filter(event =>
+    event.member_ids.includes(state.activeUserId as string)
+  )
+}
+
+export function selectActiveUser(state: AppState): FamilyMember | null {
+  if (state.activeUserId === 'everybody') {
+    return null
+  }
+  return state.familyMembers.find(m => m.id === state.activeUserId) || null
+}
