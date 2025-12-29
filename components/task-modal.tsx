@@ -1,4 +1,3 @@
-// components/task-modal.tsx
 import React, { useState, useEffect } from 'react'
 import { X, ChevronDown } from 'lucide-react'
 import { Task, FamilyMember, Frequency } from '@/types/huisos-v2'
@@ -11,6 +10,7 @@ interface TaskModalProps {
   onClose: () => void
   onSave: (task: Partial<Task>) => Promise<void>
   onDelete?: (taskId: string) => Promise<void>
+  currentUserId?: string
 }
 
 export function TaskModal({
@@ -20,6 +20,7 @@ export function TaskModal({
   onClose,
   onSave,
   onDelete,
+  currentUserId,
 }: TaskModalProps) {
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
