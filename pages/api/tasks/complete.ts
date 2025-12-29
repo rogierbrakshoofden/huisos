@@ -31,17 +31,19 @@ export default async function handler(
       return res.status(400).json({ error: 'completedBy is required' })
     }
 
-    // Fetch the task first to get token_value
-    const { data: task, error: fetchError } = await supabase
+    // Fetch the task first to get token_value - cast result to any
+    const { data: taskData, error: fetchError } = await (supabase as any)
       .from('tasks')
       .select()
       .eq('id', taskId)
       .single()
 
-    if (fetchError || !task) {
+    if (fetchError || !taskData) {
       console.error('Task fetch error:', fetchError)
       return res.status(404).json({ error: 'Task not found' })
     }
+
+    const task = taskData as Task
 
     const completedAt = new Date().toISOString()
     const completedDate = completedAt.split('T')[0]
