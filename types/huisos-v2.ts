@@ -138,6 +138,8 @@ export interface Presence {
   created_at?: string
 }
 
+export type TabType = 'work' | 'events' | 'stats' | 'log' | 'rewards'
+
 export interface AppState {
   activeUserId: string | 'everybody'
   familyMembers: FamilyMember[]
@@ -149,7 +151,7 @@ export interface AppState {
   rewards: Reward[]
   rewardClaims: RewardClaim[]
   presence: Presence[]
-  activeTab: 'work' | 'events' | 'log' | 'rewards'
+  activeTab: TabType
   modalOpen: 'task' | 'event' | null
   selectedTaskForEdit: Task | null
   editingTaskId?: string
