@@ -52,26 +52,31 @@ export default async function handler(
       return res.status(400).json({ error: 'created_by is required' })
     }
 
-    // Insert task
-    const { data: task, error: taskError } = await supabase
+    // Insert task - cast payload to any
+    const insertPayload: any = {
+      title: title.trim(),
+      description: description?.trim() || null,
+      assignee_ids,
+      recurrence_type,
+      frequency: recurrence_type === 'repeating' ? frequency : null,
+      due_date: recurrence_type === 'once' ? due_date : null,
+      token_value,
+      notes: notes?.trim() || null,
+      created_by,
+      completed: false,
+      rotation_enabled: false,
+      rotation_index: 0,
+      rotation_exclude_ids: [],
+    }
+
+    const result: any = await (supabase as any)
       .from('tasks')
-      .insert({
-        title: title.trim(),
-        description: description?.trim() || null,
-        assignee_ids,
-        recurrence_type,
-        frequency: recurrence_type === 'repeating' ? frequency : null,
-        due_date: recurrence_type === 'once' ? due_date : null,
-        token_value,
-        notes: notes?.trim() || null,
-        created_by,
-        completed: false,
-        rotation_enabled: false,
-        rotation_index: 0,
-        rotation_exclude_ids: [],
-      })
+      .insert(insertPayload)
       .select()
       .single()
+
+    const task = result.data
+    const taskError = result.error
 
     if (taskError || !task) {
       console.error('Task insert error:', taskError)
@@ -89,7 +94,7 @@ export default async function handler(
         token_value: task.token_value,
         recurrence_type: task.recurrence_type,
       },
-    })
+    } as any)
 
     return res.status(201).json(task as Task)
   } catch (err) {
