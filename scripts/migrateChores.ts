@@ -1,1 +1,63 @@
-/**\n * ============================================================================\n * DATA MIGRATION SCRIPT: Chores → Tasks\n * ============================================================================\n *\n * This script migrates existing chores from the old schema to the new tasks table.\n * Run this AFTER creating the new schema in Supabase.\n *\n * Usage:\n * ts-node scripts/migrateChores.ts\n * \n * Or add as npm script:\n * \"migrate:chores\": \"ts-node scripts/migrateChores.ts\"\n */\n\nimport { createClient } from '@supabase/supabase-js'\n\nconst supabase = createClient(\n  process.env.NEXT_PUBLIC_SUPABASE_URL || '',\n  process.env.SUPABASE_SERVICE_ROLE_KEY || ''\n)\n\ninterface OldChore {\n  id: string\n  name: string\n  frequency: string\n  eligible_member_ids: string[]\n  current_member_idx: number\n  token_value: number\n  created_at: string\n}\n\ninterface NewTask {\n  title: string\n  recurrence_type: 'repeating'\n  frequency: string\n  assignee_ids: string[]\n  rotation_enabled: boolean\n  rotation_index: number\n  token_value: number\n  created_by: null\n  created_at: string\n}\n\nasync function migrateChores() {\n  console.log('Starting chores migration...')\n\n  try {\n    // 1. Fetch all chores from old table\n    console.log('Fetching chores...')\n    const { data: chores, error: fetchError } = await supabase\n      .from('chores')\n      .select('*')\n\n    if (fetchError) {\n      console.error('Error fetching chores:', fetchError)\n      return\n    }\n\n    if (!chores || chores.length === 0) {\n      console.log('No chores found to migrate.')\n      return\n    }\n\n    console.log(`Found ${chores.length} chores to migrate.`)\n\n    // 2. Transform chores to tasks\n    const tasksToInsert: NewTask[] = (chores as OldChore[]).map(chore => ({\n      title: chore.name,\n      recurrence_type: 'repeating' as const,\n      frequency: chore.frequency,\n      assignee_ids: chore.eligible_member_ids,\n      rotation_enabled: true,\n      rotation_index: chore.current_member_idx,\n      token_value: chore.token_value,\n      created_by: null,\n      created_at: chore.created_at,\n    }))\n\n    // 3. Insert into new tasks table\n    console.log(`Inserting ${tasksToInsert.length} tasks...`)\n    const { data: insertedTasks, error: insertError } = await supabase\n      .from('tasks')\n      .insert(tasksToInsert)\n      .select()\n\n    if (insertError) {\n      console.error('Error inserting tasks:', insertError)\n      return\n    }\n\n    console.log(`✅ Successfully migrated ${insertedTasks?.length || 0} chores to tasks!`)\n\n    // 4. Summary\n    console.log('\\nMigration Summary:')\n    console.log(`- Chores migrated: ${tasksToInsert.length}`)\n    console.log(`- All chores set as repeating tasks`)\n    console.log(`- Rotation enabled for all`)\n    console.log(`- Token values preserved`)\n    console.log(`\\n⚠️  Remember to:`)\n    console.log(`  1. Enable realtime in Supabase dashboard for tasks table`)\n    console.log(`  2. Keep the old 'chores' table for rollback safety`)\n    console.log(`  3. Test thoroughly before deprecating chores table`)\n\n  } catch (error) {\n    console.error('Unexpected error:', error)\n  }\n}\n\n// Run migration\nmigrateChores().catch(console.error)\n"
+import { createClient } from '@supabase/supabase-js'
+
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL || '',
+  process.env.SUPABASE_SERVICE_ROLE_KEY || ''
+)
+
+async function migrateChores() {
+  console.log('Starting chores migration...')
+
+  try {
+    const { data: chores, error: fetchError } = await supabase
+      .from('chores')
+      .select('*')
+
+    if (fetchError) {
+      console.error('Error fetching chores:', fetchError)
+      return
+    }
+
+    if (!chores || chores.length === 0) {
+      console.log('No chores found to migrate.')
+      return
+    }
+
+    console.log(`Found ${chores.length} chores to migrate.`)
+
+    const tasksToInsert = chores.map((chore: any) => ({
+      title: chore.name,
+      recurrence_type: 'repeating',
+      frequency: chore.frequency,
+      assignee_ids: chore.eligible_member_ids,
+      rotation_enabled: true,
+      rotation_index: chore.current_member_idx,
+      token_value: chore.token_value,
+      created_by: null,
+      created_at: chore.created_at,
+    }))
+
+    console.log(`Inserting ${tasksToInsert.length} tasks...`)
+    const { data: insertedTasks, error: insertError } = await supabase
+      .from('tasks')
+      .insert(tasksToInsert)
+      .select()
+
+    if (insertError) {
+      console.error('Error inserting tasks:', insertError)
+      return
+    }
+
+    console.log(`Successfully migrated ${insertedTasks?.length || 0} chores to tasks!`)
+
+    console.log('\nMigration Summary:')
+    console.log(`- Chores migrated: ${tasksToInsert.length}`)
+    console.log(`- All chores set as repeating tasks`)
+    console.log(`- Rotation enabled for all`)
+    console.log(`- Token values preserved`)
+  } catch (error) {
+    console.error('Unexpected error:', error)
+  }
+}
+
+migrateChores().catch(console.error)
