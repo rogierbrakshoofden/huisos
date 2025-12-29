@@ -73,36 +73,33 @@ function V2DashboardContent() {
     try {
       if (editingTask) {
         // Update existing task
-        void (async () => {
-          const updatePayload: any = {
-            title: taskData.title,
-            description: taskData.description,
-            recurrence_type: taskData.recurrence_type,
-            frequency: taskData.frequency,
-            due_date: taskData.due_date,
-            assignee_ids: taskData.assignee_ids,
-            token_value: taskData.token_value,
-            notes: taskData.notes,
-            updated_at: new Date().toISOString(),
-          }
-
-          await (supabase.from('tasks').update(updatePayload) as any)
-            .eq('id', editingTask.id)
-
-          // Log activity
-          await (supabase.from('activity_log').insert({
-            actor_id: activeUserId,
-            action_type: 'task_edited',
-            entity_type: 'task',
-            entity_id: editingTask.id,
-            metadata: { title: taskData.title },
-          }) as any)
-        })()
-
         dispatch({
           type: 'UPDATE_TASK',
           payload: { ...editingTask, ...taskData } as Task,
         })
+
+        // Persist to DB (fire and forget)
+        const updatePayload: any = {
+          title: taskData.title,
+          description: taskData.description,
+          recurrence_type: taskData.recurrence_type,
+          frequency: taskData.frequency,
+          due_date: taskData.due_date,
+          assignee_ids: taskData.assignee_ids,
+          token_value: taskData.token_value,
+          notes: taskData.notes,
+          updated_at: new Date().toISOString(),
+        }
+        ;(supabase.from('tasks').update(updatePayload) as any).eq('id', editingTask.id)
+
+        // Log activity
+        ;(supabase.from('activity_log').insert({
+          actor_id: activeUserId,
+          action_type: 'task_edited',
+          entity_type: 'task',
+          entity_id: editingTask.id,
+          metadata: { title: taskData.title },
+        }) as any)
       } else {
         // Create new task - optimistic update
         const newTask: Task = {
@@ -128,20 +125,20 @@ function V2DashboardContent() {
         }
         dispatch({ type: 'ADD_TASK', payload: newTask })
 
-        // Persist to DB in background
-        void (async () => {
-          const insertPayload: any = {
-            title: taskData.title,
-            description: taskData.description,
-            recurrence_type: taskData.recurrence_type || 'once',
-            frequency: taskData.frequency,
-            due_date: taskData.due_date,
-            assignee_ids: taskData.assignee_ids || [],
-            token_value: taskData.token_value || 1,
-            notes: taskData.notes,
-            created_by: activeUserId,
-          }
+        // Persist to DB (fire and forget)
+        const insertPayload: any = {
+          title: taskData.title,
+          description: taskData.description,
+          recurrence_type: taskData.recurrence_type || 'once',
+          frequency: taskData.frequency,
+          due_date: taskData.due_date,
+          assignee_ids: taskData.assignee_ids || [],
+          token_value: taskData.token_value || 1,
+          notes: taskData.notes,
+          created_by: activeUserId,
+        }
 
+        ;(async () => {
           const { data: createdTask } = await (supabase
             .from('tasks')
             .insert(insertPayload) as any)
@@ -154,7 +151,7 @@ function V2DashboardContent() {
             dispatch({ type: 'ADD_TASK', payload: createdTask })
 
             // Log activity
-            await (supabase.from('activity_log').insert({
+            ;(supabase.from('activity_log').insert({
               actor_id: activeUserId,
               action_type: 'task_created',
               entity_type: 'task',
@@ -176,23 +173,22 @@ function V2DashboardContent() {
   const handleDeleteTask = async (taskId: string) => {
     dispatch({ type: 'DELETE_TASK', payload: taskId })
 
-    void (async () => {
-      const activeUserId =
-        state.activeUserId === 'everybody'
-          ? state.familyMembers[0]?.id
-          : (state.activeUserId as string)
+    const activeUserId =
+      state.activeUserId === 'everybody'
+        ? state.familyMembers[0]?.id
+        : (state.activeUserId as string)
 
-      await (supabase.from('tasks').delete() as any).eq('id', taskId)
+    // Delete from DB (fire and forget)
+    ;(supabase.from('tasks').delete() as any).eq('id', taskId)
 
-      // Log activity
-      await (supabase.from('activity_log').insert({
-        actor_id: activeUserId,
-        action_type: 'task_deleted',
-        entity_type: 'task',
-        entity_id: taskId,
-        metadata: {},
-      }) as any)
-    })()
+    // Log activity
+    ;(supabase.from('activity_log').insert({
+      actor_id: activeUserId,
+      action_type: 'task_deleted',
+      entity_type: 'task',
+      entity_id: taskId,
+      metadata: {},
+    }) as any)
   }
 
   const handleCompleteTask = (taskId: string) => {
@@ -226,36 +222,34 @@ function V2DashboardContent() {
         origin: { y: 0.6 },
       })
 
-      // Persist to DB in background
-      void (async () => {
-        const updatePayload: any = {
-          completed: true,
-          completed_at: new Date().toISOString(),
-          completed_by: activeUserId,
-          completed_date: new Date().toISOString().split('T')[0],
-        }
+      // Persist to DB (fire and forget)
+      const updatePayload: any = {
+        completed: true,
+        completed_at: new Date().toISOString(),
+        completed_by: activeUserId,
+        completed_date: new Date().toISOString().split('T')[0],
+      }
 
-        await (supabase.from('tasks').update(updatePayload) as any).eq('id', taskId)
+      ;(supabase.from('tasks').update(updatePayload) as any).eq('id', taskId)
 
-        // Award tokens
-        if (task.token_value > 0) {
-          await (supabase.from('tokens').insert({
-            member_id: activeUserId,
-            amount: task.token_value,
-            reason: `Completed: ${task.title}`,
-            task_completion_id: taskId,
-          }) as any)
-        }
-
-        // Log activity
-        await (supabase.from('activity_log').insert({
-          actor_id: activeUserId,
-          action_type: 'task_completed',
-          entity_type: 'task',
-          entity_id: taskId,
-          metadata: { title: task.title, token_value: task.token_value },
+      // Award tokens
+      if (task.token_value > 0) {
+        ;(supabase.from('tokens').insert({
+          member_id: activeUserId,
+          amount: task.token_value,
+          reason: `Completed: ${task.title}`,
+          task_completion_id: taskId,
         }) as any)
-      })()
+      }
+
+      // Log activity
+      ;(supabase.from('activity_log').insert({
+        actor_id: activeUserId,
+        action_type: 'task_completed',
+        entity_type: 'task',
+        entity_id: taskId,
+        metadata: { title: task.title, token_value: task.token_value },
+      }) as any)
     } catch (err) {
       console.error('Failed to complete task:', err)
       dispatch({
