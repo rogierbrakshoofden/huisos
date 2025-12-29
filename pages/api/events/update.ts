@@ -28,39 +28,25 @@ export default async function handler(
   }
 
   try {
-    const { eventId, actorId, ...updateData }: UpdateEventRequest & { actorId?: string } = req.body
+    const { eventId, actorId, title, datetime, all_day, member_ids, recurring, notes }: UpdateEventRequest = req.body
 
     if (!eventId) {
       return res.status(400).json({ error: 'eventId is required' })
     }
 
-    // Build update object
-    const updates: any = {}
-    if (updateData.title !== undefined) {
-      updates.title = updateData.title?.trim() || ''
-    }
-    if (updateData.datetime !== undefined) {
-      updates.datetime = updateData.datetime || null
-    }
-    if (updateData.all_day !== undefined) {
-      updates.all_day = updateData.all_day
-    }
-    if (updateData.member_ids !== undefined) {
-      updates.member_ids = updateData.member_ids
-    }
-    if (updateData.recurring !== undefined) {
-      updates.recurring = updateData.recurring
-    }
-    if (updateData.notes !== undefined) {
-      updates.notes = updateData.notes?.trim() || null
-    }
+    // Update event - only pass fields that are defined
+    const updatePayload: any = {}
+    if (title !== undefined) updatePayload.title = title?.trim() || ''
+    if (datetime !== undefined) updatePayload.datetime = datetime || null
+    if (all_day !== undefined) updatePayload.all_day = all_day
+    if (member_ids !== undefined) updatePayload.member_ids = member_ids
+    if (recurring !== undefined) updatePayload.recurring = recurring
+    if (notes !== undefined) updatePayload.notes = notes?.trim() || null
+    updatePayload.updated_at = new Date().toISOString()
 
-    updates.updated_at = new Date().toISOString()
-
-    // Update event - cast updates to any to bypass Supabase type inference
     const { data: eventData, error: eventError } = await supabase
       .from('events')
-      .update(updates as any)
+      .update(updatePayload)
       .eq('id', eventId)
       .select()
       .single()
