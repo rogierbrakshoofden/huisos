@@ -1,1 +1,146 @@
-// types/huisos-v2.ts\n// HuisOS v2 TypeScript Types\n// Auto-generated from Supabase schema\n\nexport interface FamilyMember {\n  id: string\n  name: string\n  initials: string\n  color: string\n  email?: string\n  push_subscription?: Record<string, unknown>\n  created_at: string\n}\n\nexport type RecurrenceType = 'once' | 'repeating'\nexport type Frequency = 'daily' | 'every_two_days' | 'weekly' | 'monthly' | 'yearly'\n\nexport interface Task {\n  id: string\n  title: string\n  description?: string\n  recurrence_type: RecurrenceType\n  frequency?: Frequency\n  recurrence_end_date?: string\n  assignee_ids: string[]\n  rotation_enabled: boolean\n  rotation_index: number\n  rotation_exclude_ids: string[]\n  parent_task_id?: string\n  completed: boolean\n  completed_at?: string\n  completed_by?: string\n  completed_date?: string\n  token_value: number\n  due_date?: string\n  notes?: string\n  created_by?: string\n  created_at: string\n  updated_at: string\n  subtasks?: Subtask[]\n}\n\nexport interface Subtask {\n  id: string\n  parent_task_id: string\n  title: string\n  description?: string\n  completed: boolean\n  completed_at?: string\n  completed_by?: string\n  order_index: number\n  created_at: string\n  updated_at: string\n}\n\nexport type EventRecurrence = 'daily' | 'weekly' | 'monthly' | 'yearly' | null\n\nexport interface Event {\n  id: string\n  title: string\n  datetime?: string\n  all_day: boolean\n  end_time?: string\n  member_ids: string[]\n  recurring?: EventRecurrence\n  recurrence_end_date?: string\n  notes?: string\n  created_at: string\n  updated_at?: string\n}\n\nexport type ActionType =\n  | 'task_created'\n  | 'task_completed'\n  | 'task_edited'\n  | 'task_deleted'\n  | 'subtask_created'\n  | 'subtask_completed'\n  | 'subtask_edited'\n  | 'subtask_deleted'\n  | 'event_created'\n  | 'event_edited'\n  | 'event_deleted'\n  | 'task_delegated'\n  | 'delegation_accepted'\n  | 'delegation_declined'\n\nexport type EntityType = 'task' | 'subtask' | 'event'\n\nexport interface ActivityLogEntry {\n  id: string\n  actor_id: string\n  action_type: ActionType\n  entity_type: EntityType\n  entity_id: string\n  metadata: Record<string, unknown>\n  created_at: string\n  actor?: FamilyMember\n}\n\nexport interface Token {\n  id: string\n  member_id: string\n  amount: number\n  reason: string\n  task_completion_id?: string\n  created_at: string\n}\n\nexport interface Reward {\n  id: string\n  name: string\n  cost: number\n  active: boolean\n  created_at: string\n}\n\nexport interface Presence {\n  id: string\n  member_id: string\n  date: string\n  morning: boolean\n  afternoon: boolean\n  evening: boolean\n  note?: string\n  created_at?: string\n}\n\nexport interface AppState {\n  activeUserId: string | 'everybody'\n  familyMembers: FamilyMember[]\n  tasks: Task[]\n  subtasks: Map<string, Subtask[]>\n  events: Event[]\n  activityLog: ActivityLogEntry[]\n  tokens: Token[]\n  rewards: Reward[]\n  presence: Presence[]\n  activeTab: 'work' | 'events' | 'log'\n  modalOpen: 'task' | 'event' | null\n  selectedTaskForEdit: Task | null\n  editingTaskId?: string\n  isOnline: boolean\n  lastSyncedAt: Date | null\n  syncError?: string\n  isLoading: boolean\n}\n"
+// types/huisos-v2.ts
+// HuisOS v2 TypeScript Types
+
+export interface FamilyMember {
+  id: string
+  name: string
+  initials: string
+  color: string
+  email?: string
+  push_subscription?: Record<string, unknown>
+  created_at: string
+}
+
+export type RecurrenceType = 'once' | 'repeating'
+export type Frequency = 'daily' | 'every_two_days' | 'weekly' | 'monthly' | 'yearly'
+
+export interface Task {
+  id: string
+  title: string
+  description?: string
+  recurrence_type: RecurrenceType
+  frequency?: Frequency
+  recurrence_end_date?: string
+  assignee_ids: string[]
+  rotation_enabled: boolean
+  rotation_index: number
+  rotation_exclude_ids: string[]
+  parent_task_id?: string
+  completed: boolean
+  completed_at?: string
+  completed_by?: string
+  completed_date?: string
+  token_value: number
+  due_date?: string
+  notes?: string
+  created_by?: string
+  created_at: string
+  updated_at: string
+  subtasks?: Subtask[]
+}
+
+export interface Subtask {
+  id: string
+  parent_task_id: string
+  title: string
+  description?: string
+  completed: boolean
+  completed_at?: string
+  completed_by?: string
+  order_index: number
+  created_at: string
+  updated_at: string
+}
+
+export type EventRecurrence = 'daily' | 'weekly' | 'monthly' | 'yearly' | null
+
+export interface Event {
+  id: string
+  title: string
+  datetime?: string
+  all_day: boolean
+  end_time?: string
+  member_ids: string[]
+  recurring?: EventRecurrence
+  recurrence_end_date?: string
+  notes?: string
+  created_at: string
+  updated_at?: string
+}
+
+export type ActionType =
+  | 'task_created'
+  | 'task_completed'
+  | 'task_edited'
+  | 'task_deleted'
+  | 'subtask_created'
+  | 'subtask_completed'
+  | 'subtask_edited'
+  | 'subtask_deleted'
+  | 'event_created'
+  | 'event_edited'
+  | 'event_deleted'
+  | 'task_delegated'
+  | 'delegation_accepted'
+  | 'delegation_declined'
+
+export type EntityType = 'task' | 'subtask' | 'event'
+
+export interface ActivityLogEntry {
+  id: string
+  actor_id: string
+  action_type: ActionType
+  entity_type: EntityType
+  entity_id: string
+  metadata: Record<string, unknown>
+  created_at: string
+  actor?: FamilyMember
+}
+
+export interface Token {
+  id: string
+  member_id: string
+  amount: number
+  reason: string
+  task_completion_id?: string
+  created_at: string
+}
+
+export interface Reward {
+  id: string
+  name: string
+  cost: number
+  active: boolean
+  created_at: string
+}
+
+export interface Presence {
+  id: string
+  member_id: string
+  date: string
+  morning: boolean
+  afternoon: boolean
+  evening: boolean
+  note?: string
+  created_at?: string
+}
+
+export interface AppState {
+  activeUserId: string | 'everybody'
+  familyMembers: FamilyMember[]
+  tasks: Task[]
+  subtasks: Map<string, Subtask[]>
+  events: Event[]
+  activityLog: ActivityLogEntry[]
+  tokens: Token[]
+  rewards: Reward[]
+  presence: Presence[]
+  activeTab: 'work' | 'events' | 'log'
+  modalOpen: 'task' | 'event' | null
+  selectedTaskForEdit: Task | null
+  editingTaskId?: string
+  isOnline: boolean
+  lastSyncedAt: Date | null
+  syncError?: string
+  isLoading: boolean
+}
