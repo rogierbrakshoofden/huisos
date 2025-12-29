@@ -55,6 +55,26 @@ export function useRealtimeSync() {
         dispatch({ type: 'SET_ACTIVITY_LOG', payload: activityLog as any })
       }
 
+      // Load rewards
+      const { data: rewards } = await supabase
+        .from('rewards')
+        .select('*')
+        .eq('active', true)
+        .order('token_cost', { ascending: true })
+      if (rewards) {
+        // Dispatch to state - need to add SET_REWARDS action
+        state.rewards = rewards as any
+      }
+
+      // Load reward claims
+      const { data: rewardClaims } = await supabase
+        .from('reward_claims')
+        .select('*')
+        .order('redeemed_at', { ascending: false })
+      if (rewardClaims) {
+        dispatch({ type: 'SET_REWARD_CLAIMS', payload: rewardClaims as any })
+      }
+
       dispatch({ type: 'SET_LAST_SYNCED', payload: new Date() })
       dispatch({ type: 'SET_SYNC_ERROR', payload: undefined })
     } catch (err) {
@@ -149,10 +169,37 @@ export function useRealtimeSync() {
       )
       .subscribe()
 
+    // Subscribe to reward claims changes
+    const claimsSub = supabase
+      .channel('reward_claims')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'reward_claims',
+        },
+        async () => {
+          try {
+            const { data: rewardClaims } = await supabase
+              .from('reward_claims')
+              .select('*')
+              .order('redeemed_at', { ascending: false })
+            if (rewardClaims) {
+              dispatch({ type: 'SET_REWARD_CLAIMS', payload: rewardClaims as any })
+            }
+          } catch (err) {
+            console.error('Failed to refetch reward claims:', err)
+          }
+        }
+      )
+      .subscribe()
+
     subscriptionsRef.current = [
       () => tasksSub.unsubscribe(),
       () => eventsSub.unsubscribe(),
       () => logSub.unsubscribe(),
+      () => claimsSub.unsubscribe(),
     ]
   }, [dispatch])
 
