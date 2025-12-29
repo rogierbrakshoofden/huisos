@@ -48,8 +48,8 @@ export default async function handler(
       return res.status(400).json({ error: 'At least one member is required' })
     }
 
-    // Insert event using object syntax
-    const { data: eventData, error: eventError } = await supabase
+    // Insert event - cast entire result to any
+    const result: any = await (supabase as any)
       .from('events')
       .insert({
         title: title.trim(),
@@ -58,9 +58,12 @@ export default async function handler(
         member_ids,
         recurring: recurring || null,
         notes: notes?.trim() || null,
-      } as any)
+      })
       .select()
       .single()
+
+    const eventData = result.data
+    const eventError = result.error
 
     if (eventError || !eventData) {
       console.error('Event insert error:', eventError)
