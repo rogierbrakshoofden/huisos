@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useReducer, useEffect, ReactNode } from 'react'
-import { AppState, Task, Event, ActivityLogEntry, FamilyMember, RewardClaim } from '@/types/huisos-v2'
+import { AppState, Task, Event, ActivityLogEntry, FamilyMember, RewardClaim, Subtask } from '@/types/huisos-v2'
 
 const AppContext = createContext<{
   state: AppState
@@ -31,6 +31,10 @@ export type AppAction =
   | { type: 'SET_REWARD_CLAIMS'; payload: RewardClaim[] }
   | { type: 'ADD_REWARD_CLAIM'; payload: RewardClaim }
   | { type: 'UPDATE_REWARD_CLAIM'; payload: RewardClaim }
+  | { type: 'ADD_SUBTASK'; payload: { taskId: string; subtask: Subtask } }
+  | { type: 'UPDATE_SUBTASK'; payload: { taskId: string; subtask: Subtask } }
+  | { type: 'DELETE_SUBTASK'; payload: { taskId: string; subtaskId: string } }
+  | { type: 'REORDER_SUBTASKS'; payload: { taskId: string; subtasks: Subtask[] } }
 
 const initialState: AppState = {
   activeUserId: 'everybody',
@@ -129,6 +133,33 @@ function appReducer(state: AppState, action: AppAction): AppState {
         ...state,
         rewardClaims: state.rewardClaims.map(c => (c.id === action.payload.id ? action.payload : c)),
       }
+    case 'ADD_SUBTASK': {
+      const { taskId, subtask } = action.payload
+      const existing = state.subtasks.get(taskId) || []
+      const updated = new Map(state.subtasks)
+      updated.set(taskId, [...existing, subtask])
+      return { ...state, subtasks: updated }
+    }
+    case 'UPDATE_SUBTASK': {
+      const { taskId, subtask } = action.payload
+      const existing = state.subtasks.get(taskId) || []
+      const updated = new Map(state.subtasks)
+      updated.set(taskId, existing.map(s => (s.id === subtask.id ? subtask : s)))
+      return { ...state, subtasks: updated }
+    }
+    case 'DELETE_SUBTASK': {
+      const { taskId, subtaskId } = action.payload
+      const existing = state.subtasks.get(taskId) || []
+      const updated = new Map(state.subtasks)
+      updated.set(taskId, existing.filter(s => s.id !== subtaskId))
+      return { ...state, subtasks: updated }
+    }
+    case 'REORDER_SUBTASKS': {
+      const { taskId, subtasks } = action.payload
+      const updated = new Map(state.subtasks)
+      updated.set(taskId, subtasks)
+      return { ...state, subtasks: updated }
+    }
     default:
       return state
   }
