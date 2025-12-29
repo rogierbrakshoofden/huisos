@@ -6,8 +6,8 @@ import { useRealtimeSync } from '@/lib/hooks-v2-enhanced'
 import { UserSwitcher } from '@/components/user-switcher'
 import { BottomNav } from '@/components/bottom-nav'
 import { TaskListItem } from '@/components/task-list-item'
-import { completeTask, deleteTask } from '@/lib/supabase-service'
 import { Task } from '@/types/huisos-v2'
+import { supabase } from '@/lib/supabase'
 import confetti from 'canvas-confetti'
 
 export default function V2Dashboard() {
@@ -34,7 +34,6 @@ function V2DashboardContent() {
   const tasks = selectTasksForUser(state)
   const events = selectEventsForUser(state)
   const activeTab = state.activeTab
-  const [editingTask, setEditingTask] = useState<Task | null>(null)
 
   const setActiveTab = (tab: 'work' | 'events' | 'log') => {
     dispatch({ type: 'SET_ACTIVE_TAB', payload: tab })
@@ -53,8 +52,41 @@ function V2DashboardContent() {
 
       if (!activeUserId) throw new Error('No active user')
 
-      const updatedTask = await completeTask(taskId, activeUserId)
-      dispatch({ type: 'UPDATE_TASK', payload: updatedTask })
+      // Update task
+      const { data: task, error } = await supabase
+        .from('tasks')
+        .update({
+          completed: true,
+          completed_at: new Date().toISOString(),
+          completed_by: activeUserId,
+          completed_date: new Date().toISOString().split('T')[0],
+        })
+        .eq('id', taskId)
+        .select()
+        .single()
+
+      if (error) throw error
+
+      dispatch({ type: 'UPDATE_TASK', payload: task as any })
+
+      // Award tokens
+      if ((task as any).token_value > 0) {
+        await supabase.from('tokens').insert({
+          member_id: activeUserId,
+          amount: (task as any).token_value,
+          reason: `Completed: ${(task as any).title}`,
+          task_completion_id: taskId,
+        })
+      }
+
+      // Log activity
+      await supabase.from('activity_log').insert({
+        actor_id: activeUserId,
+        action_type: 'task_completed',
+        entity_type: 'task',
+        entity_id: taskId,
+        metadata: { title: (task as any).title, token_value: (task as any).token_value },
+      })
 
       confetti({
         particleCount: 100,
@@ -74,7 +106,12 @@ function V2DashboardContent() {
     if (!confirm('Are you sure you want to delete this task?')) return
 
     try {
-      await deleteTask(taskId)
+      const { error } = await supabase
+        .from('tasks')
+        .delete()
+        .eq('id', taskId)
+
+      if (error) throw error
       dispatch({ type: 'DELETE_TASK', payload: taskId })
     } catch (err) {
       console.error('Failed to delete task:', err)
@@ -86,7 +123,7 @@ function V2DashboardContent() {
   }
 
   const handleEditTask = (task: Task) => {
-    setEditingTask(task)
+    console.log('Edit task:', task)
   }
 
   if (isLoading) {
