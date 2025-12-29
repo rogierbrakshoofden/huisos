@@ -34,8 +34,8 @@ export default async function handler(
       return res.status(400).json({ error: 'eventId is required' })
     }
 
-    // Build update object
-    const updates: Record<string, any> = {}
+    // Build update object - use type assertion
+    const updates: any = {}
     if (updateData.title !== undefined) {
       updates.title = updateData.title?.trim() || ''
     }
@@ -80,7 +80,7 @@ export default async function handler(
       metadata: {
         title: event.title,
       },
-    })
+    } as any)
 
     return res.status(200).json(event as Event)
   } catch (err) {
