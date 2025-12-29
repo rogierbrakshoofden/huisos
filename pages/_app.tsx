@@ -1,1 +1,11 @@
-import '@/styles/globals.css'\nimport type { AppProps } from 'next/app'\nimport { AppProvider } from '@/lib/context-v2'\n\nexport default function App({ Component, pageProps }: AppProps) {\n  return (\n    <AppProvider>\n      <Component {...pageProps} />\n    </AppProvider>\n  )\n}\n"
+import '@/styles/globals.css'
+import type { AppProps } from 'next/app'
+import { AppProvider } from '@/lib/context-v2'
+
+export default function App({ Component, pageProps }: AppProps) {
+  return (
+    <AppProvider>
+      <Component {...pageProps} />
+    </AppProvider>
+  )
+}
