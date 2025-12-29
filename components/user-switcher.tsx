@@ -76,9 +76,10 @@ export function UserSwitcher({
             onClick={() => handleUserSelect('everybody')}
             className={`
               w-full text-left px-4 py-2 rounded-md text-sm transition-colors
-              ${activeUserId === 'everybody'
-                ? 'bg-slate-700 text-white font-semibold'
-                : 'text-slate-300 hover:bg-slate-800/50'
+              ${
+                activeUserId === 'everybody'
+                  ? 'bg-slate-700 text-white font-semibold'
+                  : 'text-slate-300 hover:bg-slate-800/50'
               }
             `}
           >
@@ -94,16 +95,17 @@ export function UserSwitcher({
               className={`
                 w-full text-left px-4 py-2 rounded-md text-sm transition-colors
                 flex items-center gap-2
-                ${activeUserId === member.id
-                  ? 'bg-slate-700 text-white font-semibold'
-                  : 'text-slate-300 hover:bg-slate-800/50'
+                ${
+                  activeUserId === member.id
+                    ? 'bg-slate-700 text-white font-semibold'
+                    : 'text-slate-300 hover:bg-slate-800/50'
                 }
               `}
             >
               <FamilyMemberCircle
-                member={member}
+                initials={member.initials}
+                color={member.color}
                 size="sm"
-                showInitials
               />
               {member.name}
             </button>
