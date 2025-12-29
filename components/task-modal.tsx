@@ -1,7 +1,7 @@
 // components/task-modal.tsx
 import React, { useState, useEffect } from 'react'
 import { X, ChevronDown } from 'lucide-react'
-import { Task, FamilyMember } from '@/types/huisos-v2'
+import { Task, FamilyMember, Frequency } from '@/types/huisos-v2'
 import { FamilyMemberCircle } from '@/components/family-member-circle'
 
 interface TaskModalProps {
@@ -25,7 +25,7 @@ export function TaskModal({
   const [description, setDescription] = useState('')
   const [assigneeIds, setAssigneeIds] = useState<string[]>([])
   const [recurrenceType, setRecurrenceType] = useState<'once' | 'repeating'>('once')
-  const [frequency, setFrequency] = useState('daily')
+  const [frequency, setFrequency] = useState<Frequency>('daily')
   const [dueDate, setDueDate] = useState('')
   const [tokenValue, setTokenValue] = useState(1)
   const [notes, setNotes] = useState('')
@@ -39,7 +39,7 @@ export function TaskModal({
       setDescription(task.description || '')
       setAssigneeIds(task.assignee_ids || [])
       setRecurrenceType((task.recurrence_type as any) || 'once')
-      setFrequency(task.frequency || 'daily')
+      setFrequency((task.frequency as Frequency) || 'daily')
       setDueDate(task.due_date || '')
       setTokenValue(task.token_value || 1)
       setNotes(task.notes || '')
@@ -291,13 +291,12 @@ export function TaskModal({
               <div className="relative">
                 <select
                   value={frequency}
-                  onChange={e => setFrequency(e.target.value)}
+                  onChange={e => setFrequency(e.target.value as Frequency)}
                   className="w-full px-4 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white focus:outline-none focus:border-slate-600 focus:ring-1 focus:ring-slate-600 appearance-none"
                 >
                   <option value="daily">Daily</option>
                   <option value="every_two_days">Every 2 days</option>
                   <option value="weekly">Weekly</option>
-                  <option value="biweekly">Biweekly</option>
                   <option value="monthly">Monthly</option>
                   <option value="yearly">Yearly</option>
                 </select>
