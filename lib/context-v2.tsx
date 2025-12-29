@@ -20,8 +20,8 @@ export type AppAction =
   | { type: 'SET_ACTIVITY_LOG'; payload: ActivityLogEntry[] }
   | { type: 'ADD_LOG_ENTRY'; payload: ActivityLogEntry }
   | { type: 'SET_ACTIVE_TAB'; payload: 'work' | 'events' | 'log' }
-  | { type: 'OPEN_TASK_MODAL'; payload?: Task }
-  | { type: 'OPEN_EVENT_MODAL'; payload?: Event }
+  | { type: 'OPEN_TASK_MODAL'; payload: Task | null }
+  | { type: 'OPEN_EVENT_MODAL'; payload: Event | null }
   | { type: 'CLOSE_MODAL' }
   | { type: 'SET_EDITING_TASK'; payload: string | undefined }
   | { type: 'SET_ONLINE'; payload: boolean }
