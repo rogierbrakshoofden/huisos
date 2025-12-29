@@ -5,7 +5,9 @@ import { useApp, selectTasksForUser, selectEventsForUser } from '@/lib/context-v
 import { useRealtimeSync } from '@/lib/hooks-v2-enhanced'
 import { UserSwitcher } from '@/components/user-switcher'
 import { BottomNav } from '@/components/bottom-nav'
+import { AddButton } from '@/components/add-button'
 import { TaskListItem } from '@/components/task-list-item'
+import { TaskModal } from '@/components/task-modal'
 import { Task } from '@/types/huisos-v2'
 import { supabase } from '@/lib/supabase'
 import confetti from 'canvas-confetti'
@@ -34,6 +36,8 @@ function V2DashboardContent() {
   const tasks = selectTasksForUser(state)
   const events = selectEventsForUser(state)
   const activeTab = state.activeTab
+  const [isModalOpen, setIsModalOpen] = useState(false)
+  const [editingTask, setEditingTask] = useState<Task | null>(null)
 
   const setActiveTab = (tab: 'work' | 'events' | 'log') => {
     dispatch({ type: 'SET_ACTIVE_TAB', payload: tab })
@@ -41,6 +45,152 @@ function V2DashboardContent() {
 
   const switchUser = (userId: string | 'everybody') => {
     dispatch({ type: 'SET_ACTIVE_USER', payload: userId })
+  }
+
+  const handleOpenNewTask = () => {
+    setEditingTask(null)
+    setIsModalOpen(true)
+  }
+
+  const handleEditTask = (task: Task) => {
+    setEditingTask(task)
+    setIsModalOpen(true)
+  }
+
+  const handleCloseModal = () => {
+    setIsModalOpen(false)
+    setEditingTask(null)
+  }
+
+  const handleSaveTask = async (taskData: Partial<Task>) => {
+    const activeUserId =
+      state.activeUserId === 'everybody'
+        ? state.familyMembers[0]?.id
+        : (state.activeUserId as string)
+
+    if (!activeUserId) throw new Error('No active user')
+
+    try {
+      if (editingTask) {
+        // Update existing task
+        void (async () => {
+          const updatePayload: any = {
+            title: taskData.title,
+            description: taskData.description,
+            recurrence_type: taskData.recurrence_type,
+            frequency: taskData.frequency,
+            due_date: taskData.due_date,
+            assignee_ids: taskData.assignee_ids,
+            token_value: taskData.token_value,
+            notes: taskData.notes,
+            updated_at: new Date().toISOString(),
+          }
+
+          await (supabase.from('tasks').update(updatePayload) as any)
+            .eq('id', editingTask.id)
+
+          // Log activity
+          await (supabase.from('activity_log').insert({
+            actor_id: activeUserId,
+            action_type: 'task_edited',
+            entity_type: 'task',
+            entity_id: editingTask.id,
+            metadata: { title: taskData.title },
+          }) as any)
+        })()
+
+        dispatch({
+          type: 'UPDATE_TASK',
+          payload: { ...editingTask, ...taskData },
+        })
+      } else {
+        // Create new task
+        void (async () => {
+          const insertPayload: any = {
+            title: taskData.title,
+            description: taskData.description,
+            recurrence_type: taskData.recurrence_type || 'once',
+            frequency: taskData.frequency,
+            due_date: taskData.due_date,
+            assignee_ids: taskData.assignee_ids || [],
+            token_value: taskData.token_value || 1,
+            notes: taskData.notes,
+            created_by: activeUserId,
+          }
+
+          const { data: newTask } = await (supabase
+            .from('tasks')
+            .insert(insertPayload) as any)
+            .select()
+            .single()
+
+          if (newTask) {
+            dispatch({ type: 'CREATE_TASK', payload: newTask })
+
+            // Log activity
+            await (supabase.from('activity_log').insert({
+              actor_id: activeUserId,
+              action_type: 'task_created',
+              entity_type: 'task',
+              entity_id: newTask.id,
+              metadata: { title: taskData.title, token_value: taskData.token_value },
+            }) as any)
+          }
+        })()
+
+        // Create optimistic update
+        const newTask: Task = {
+          id: `temp-${Date.now()}`,
+          title: taskData.title || '',
+          description: taskData.description,
+          recurrence_type: (taskData.recurrence_type as any) || 'once',
+          frequency: taskData.frequency,
+          due_date: taskData.due_date,
+          assignee_ids: taskData.assignee_ids || [],
+          rotation_enabled: false,
+          rotation_index: 0,
+          rotation_exclude_ids: [],
+          completed: false,
+          completed_at: undefined,
+          completed_by: undefined,
+          completed_date: undefined,
+          token_value: taskData.token_value || 1,
+          notes: taskData.notes,
+          created_by: activeUserId,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        }
+        dispatch({ type: 'CREATE_TASK', payload: newTask })
+      }
+    } catch (err) {
+      dispatch({
+        type: 'SET_SYNC_ERROR',
+        payload: `Failed to save task: ${(err as Error).message}`,
+      })
+      throw err
+    }
+  }
+
+  const handleDeleteTask = async (taskId: string) => {
+    dispatch({ type: 'DELETE_TASK', payload: taskId })
+
+    void (async () => {
+      const activeUserId =
+        state.activeUserId === 'everybody'
+          ? state.familyMembers[0]?.id
+          : (state.activeUserId as string)
+
+      await (supabase.from('tasks').delete() as any).eq('id', taskId)
+
+      // Log activity
+      await (supabase.from('activity_log').insert({
+        actor_id: activeUserId,
+        action_type: 'task_deleted',
+        entity_type: 'task',
+        entity_id: taskId,
+        metadata: {},
+      }) as any)
+    })()
   }
 
   const handleCompleteTask = (taskId: string) => {
@@ -55,7 +205,6 @@ function V2DashboardContent() {
       const task = state.tasks.find(t => t.id === taskId)
       if (!task) throw new Error('Task not found')
 
-      // Update local state optimistically
       const completedTask = {
         ...task,
         completed: true,
@@ -69,15 +218,42 @@ function V2DashboardContent() {
         payload: completedTask,
       })
 
-      // Trigger confetti
       confetti({
         particleCount: 100,
         spread: 70,
         origin: { y: 0.6 },
       })
 
-      // TODO: Persist to DB in Phase 3 (task creation modal)
-      console.log('Task completed locally. DB sync in Phase 3.')
+      // Persist to DB in background
+      void (async () => {
+        const updatePayload: any = {
+          completed: true,
+          completed_at: new Date().toISOString(),
+          completed_by: activeUserId,
+          completed_date: new Date().toISOString().split('T')[0],
+        }
+
+        await (supabase.from('tasks').update(updatePayload) as any).eq('id', taskId)
+
+        // Award tokens
+        if (task.token_value > 0) {
+          await (supabase.from('tokens').insert({
+            member_id: activeUserId,
+            amount: task.token_value,
+            reason: `Completed: ${task.title}`,
+            task_completion_id: taskId,
+          }) as any)
+        }
+
+        // Log activity
+        await (supabase.from('activity_log').insert({
+          actor_id: activeUserId,
+          action_type: 'task_completed',
+          entity_type: 'task',
+          entity_id: taskId,
+          metadata: { title: task.title, token_value: task.token_value },
+        }) as any)
+      })()
     } catch (err) {
       console.error('Failed to complete task:', err)
       dispatch({
@@ -85,25 +261,6 @@ function V2DashboardContent() {
         payload: `Failed: ${(err as Error).message}`,
       })
     }
-  }
-
-  const handleDeleteTask = (taskId: string) => {
-    if (!confirm('Are you sure you want to delete this task?')) return
-
-    try {
-      dispatch({ type: 'DELETE_TASK', payload: taskId })
-      console.log('Task deleted locally. DB sync in Phase 3.')
-    } catch (err) {
-      console.error('Failed to delete task:', err)
-      dispatch({
-        type: 'SET_SYNC_ERROR',
-        payload: `Failed: ${(err as Error).message}`,
-      })
-    }
-  }
-
-  const handleEditTask = (task: Task) => {
-    console.log('Edit task:', task)
   }
 
   if (isLoading) {
@@ -128,6 +285,8 @@ function V2DashboardContent() {
         familyMembers={state.familyMembers}
         onUserChange={switchUser}
       />
+
+      <AddButton onTaskClick={handleOpenNewTask} onEventClick={() => {}} />
 
       {syncError && (
         <div className="fixed top-20 left-0 right-0 mx-auto max-w-sm z-40 m-4">
@@ -155,7 +314,10 @@ function V2DashboardContent() {
             {tasks.length === 0 ? (
               <div className="text-center py-12">
                 <p className="text-slate-400 mb-4">No tasks</p>
-                <button className="px-4 py-2 rounded-lg bg-slate-700 text-white hover:bg-slate-600 transition-colors">
+                <button
+                  onClick={handleOpenNewTask}
+                  className="px-4 py-2 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 transition-colors"
+                >
                   + Add Task
                 </button>
               </div>
@@ -256,8 +418,17 @@ function V2DashboardContent() {
         logCount={state.activityLog.length}
       />
 
+      <TaskModal
+        task={editingTask}
+        familyMembers={state.familyMembers}
+        isOpen={isModalOpen}
+        onClose={handleCloseModal}
+        onSave={handleSaveTask}
+        onDelete={handleDeleteTask}
+      />
+
       <div className="fixed bottom-32 left-4 text-xs text-slate-600 pointer-events-none">
-        <p>Phase 2: Live ✓</p>
+        <p>Phase 3: Live ✓</p>
         <p>Realtime sync: {isOnline ? '🟢' : '🔴'}</p>
       </div>
     </div>
