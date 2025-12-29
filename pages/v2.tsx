@@ -8,7 +8,8 @@ import { BottomNav } from '@/components/bottom-nav'
 import { AddButton } from '@/components/add-button'
 import { TaskListItem } from '@/components/task-list-item'
 import { TaskModal } from '@/components/task-modal'
-import { Task } from '@/types/huisos-v2'
+import { EventModal } from '@/components/event-modal'
+import { Task, Event } from '@/types/huisos-v2'
 import confetti from 'canvas-confetti'
 
 export default function V2Dashboard() {
@@ -35,8 +36,10 @@ function V2DashboardContent() {
   const tasks = selectTasksForUser(state)
   const events = selectEventsForUser(state)
   const activeTab = state.activeTab
-  const [isModalOpen, setIsModalOpen] = useState(false)
+  const [isTaskModalOpen, setIsTaskModalOpen] = useState(false)
+  const [isEventModalOpen, setIsEventModalOpen] = useState(false)
   const [editingTask, setEditingTask] = useState<Task | null>(null)
+  const [editingEvent, setEditingEvent] = useState<Event | null>(null)
   const [apiError, setApiError] = useState<string | null>(null)
 
   const setActiveTab = (tab: 'work' | 'events' | 'log') => {
@@ -49,17 +52,33 @@ function V2DashboardContent() {
 
   const handleOpenNewTask = () => {
     setEditingTask(null)
-    setIsModalOpen(true)
+    setIsTaskModalOpen(true)
+  }
+
+  const handleOpenNewEvent = () => {
+    setEditingEvent(null)
+    setIsEventModalOpen(true)
   }
 
   const handleEditTask = (task: Task) => {
     setEditingTask(task)
-    setIsModalOpen(true)
+    setIsTaskModalOpen(true)
   }
 
-  const handleCloseModal = () => {
-    setIsModalOpen(false)
+  const handleEditEvent = (event: Event) => {
+    setEditingEvent(event)
+    setIsEventModalOpen(true)
+  }
+
+  const handleCloseTaskModal = () => {
+    setIsTaskModalOpen(false)
     setEditingTask(null)
+    setApiError(null)
+  }
+
+  const handleCloseEventModal = () => {
+    setIsEventModalOpen(false)
+    setEditingEvent(null)
     setApiError(null)
   }
 
@@ -128,6 +147,72 @@ function V2DashboardContent() {
     }
   }
 
+  const handleSaveEvent = async (eventData: Partial<Event>) => {
+    const activeUserId =
+      state.activeUserId === 'everybody'
+        ? state.familyMembers[0]?.id
+        : (state.activeUserId as string)
+
+    if (!activeUserId) throw new Error('No active user')
+
+    try {
+      setApiError(null)
+
+      if (editingEvent) {
+        // Update existing event
+        const response = await fetch('/api/events/update', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            eventId: editingEvent.id,
+            ...eventData,
+            actorId: activeUserId,
+          }),
+        })
+
+        if (!response.ok) {
+          const error = await response.json()
+          throw new Error(error.error || 'Failed to update event')
+        }
+
+        const updatedEvent = await response.json()
+        dispatch({
+          type: 'UPDATE_EVENT',
+          payload: updatedEvent as Event,
+        })
+      } else {
+        // Create new event
+        const response = await fetch('/api/events/create', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            ...eventData,
+            created_by: activeUserId,
+          }),
+        })
+
+        if (!response.ok) {
+          const error = await response.json()
+          throw new Error(error.error || 'Failed to create event')
+        }
+
+        const newEvent = await response.json()
+        dispatch({
+          type: 'ADD_EVENT',
+          payload: newEvent as Event,
+        })
+      }
+    } catch (err) {
+      const message = (err as Error).message
+      setApiError(message)
+      dispatch({
+        type: 'SET_SYNC_ERROR',
+        payload: `Failed to save event: ${message}`,
+      })
+      throw err
+    }
+  }
+
   const handleDeleteTask = async (taskId: string) => {
     const activeUserId =
       state.activeUserId === 'everybody'
@@ -158,6 +243,41 @@ function V2DashboardContent() {
       dispatch({
         type: 'SET_SYNC_ERROR',
         payload: `Failed to delete task: ${message}`,
+      })
+      throw err
+    }
+  }
+
+  const handleDeleteEvent = async (eventId: string) => {
+    const activeUserId =
+      state.activeUserId === 'everybody'
+        ? state.familyMembers[0]?.id
+        : (state.activeUserId as string)
+
+    try {
+      setApiError(null)
+
+      const response = await fetch('/api/events/delete', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          eventId,
+          actorId: activeUserId,
+        }),
+      })
+
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.error || 'Failed to delete event')
+      }
+
+      dispatch({ type: 'DELETE_EVENT', payload: eventId })
+    } catch (err) {
+      const message = (err as Error).message
+      setApiError(message)
+      dispatch({
+        type: 'SET_SYNC_ERROR',
+        payload: `Failed to delete event: ${message}`,
       })
       throw err
     }
@@ -233,7 +353,7 @@ function V2DashboardContent() {
         onUserChange={switchUser}
       />
 
-      <AddButton onTaskClick={handleOpenNewTask} onEventClick={() => {}} />
+      <AddButton onTaskClick={handleOpenNewTask} onEventClick={handleOpenNewEvent} />
 
       {(syncError || apiError) && (
         <div className="fixed top-20 left-0 right-0 mx-auto max-w-sm z-40 m-4">
@@ -295,7 +415,10 @@ function V2DashboardContent() {
             {events.length === 0 ? (
               <div className="text-center py-12">
                 <p className="text-slate-400 mb-4">No events</p>
-                <button className="px-4 py-2 rounded-lg bg-slate-700 text-white hover:bg-slate-600 transition-colors">
+                <button
+                  onClick={handleOpenNewEvent}
+                  className="px-4 py-2 rounded-lg bg-slate-700 text-white hover:bg-slate-600 transition-colors"
+                >
                   + Add Event
                 </button>
               </div>
@@ -304,7 +427,8 @@ function V2DashboardContent() {
                 {events.map((event) => (
                   <div
                     key={event.id}
-                    className="bg-slate-800/60 border border-slate-700/50 rounded-lg p-4 hover:bg-slate-800/80 transition-all duration-200"
+                    className="bg-slate-800/60 border border-slate-700/50 rounded-lg p-4 hover:bg-slate-800/80 transition-all duration-200 cursor-pointer"
+                    onClick={() => handleEditEvent(event)}
                   >
                     <div className="font-medium text-white mb-1">{event.title}</div>
                     <div className="text-sm text-slate-400">
@@ -368,8 +492,8 @@ function V2DashboardContent() {
       <TaskModal
         task={editingTask}
         familyMembers={state.familyMembers}
-        isOpen={isModalOpen}
-        onClose={handleCloseModal}
+        isOpen={isTaskModalOpen}
+        onClose={handleCloseTaskModal}
         onSave={handleSaveTask}
         onDelete={handleDeleteTask}
         currentUserId={
@@ -379,8 +503,17 @@ function V2DashboardContent() {
         }
       />
 
+      <EventModal
+        event={editingEvent}
+        familyMembers={state.familyMembers}
+        isOpen={isEventModalOpen}
+        onClose={handleCloseEventModal}
+        onSave={handleSaveEvent}
+        onDelete={handleDeleteEvent}
+      />
+
       <div className="fixed bottom-32 left-4 text-xs text-slate-600 pointer-events-none">
-        <p>Phase 4: DB Persistence ✓</p>
+        <p>Phase 4: DB Persistence + Events ✓</p>
         <p>Realtime sync: {isOnline ? '🟢' : '🔴'}</p>
       </div>
     </div>
