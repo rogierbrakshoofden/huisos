@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
-import { X, ChevronDown } from 'lucide-react'
-import { Task, FamilyMember, Frequency } from '@/types/huisos-v2'
+import { X, ChevronDown, Trash2, GripVertical, Plus } from 'lucide-react'
+import { Task, FamilyMember, Frequency, Subtask } from '@/types/huisos-v2'
 import { FamilyMemberCircle } from '@/components/family-member-circle'
 
 interface TaskModalProps {
@@ -32,6 +32,12 @@ export function TaskModal({
   const [notes, setNotes] = useState('')
   const [isSaving, setIsSaving] = useState(false)
   const [errors, setErrors] = useState<Record<string, string>>({})
+  
+  // Subtask state
+  const [subtasks, setSubtasks] = useState<Subtask[]>([])
+  const [newSubtaskTitle, setNewSubtaskTitle] = useState('')
+  const [editingSubtaskId, setEditingSubtaskId] = useState<string | null>(null)
+  const [editingSubtaskTitle, setEditingSubtaskTitle] = useState('')
 
   // Initialize form with task data if editing
   useEffect(() => {
@@ -44,6 +50,11 @@ export function TaskModal({
       setDueDate(task.due_date || '')
       setTokenValue(task.token_value || 1)
       setNotes(task.notes || '')
+      
+      // Load subtasks if editing existing task
+      if (task.id) {
+        loadSubtasks(task.id)
+      }
     } else {
       // Reset for new task
       setTitle('')
@@ -54,9 +65,24 @@ export function TaskModal({
       setDueDate('')
       setTokenValue(1)
       setNotes('')
+      setSubtasks([])
     }
     setErrors({})
+    setNewSubtaskTitle('')
+    setEditingSubtaskId(null)
   }, [task, isOpen])
+
+  const loadSubtasks = async (taskId: string) => {
+    try {
+      const response = await fetch(`/api/subtasks/list?parent_task_id=${taskId}`)
+      if (response.ok) {
+        const data = await response.json()
+        setSubtasks(data)
+      }
+    } catch (err) {
+      console.error('Failed to load subtasks:', err)
+    }
+  }
 
   const validateForm = (): boolean => {
     const newErrors: Record<string, string> = {}
@@ -82,6 +108,72 @@ export function TaskModal({
 
     setErrors(newErrors)
     return Object.keys(newErrors).length === 0
+  }
+
+  const handleAddSubtask = async () => {
+    if (!newSubtaskTitle.trim()) return
+    if (!task?.id) return
+
+    try {
+      const response = await fetch('/api/subtasks/create', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          parent_task_id: task.id,
+          title: newSubtaskTitle.trim(),
+          created_by: currentUserId,
+        }),
+      })
+
+      if (response.ok) {
+        const newSubtask = await response.json()
+        setSubtasks(prev => [...prev, newSubtask])
+        setNewSubtaskTitle('')
+      }
+    } catch (err) {
+      console.error('Failed to create subtask:', err)
+    }
+  }
+
+  const handleUpdateSubtask = async (subtaskId: string, newTitle: string) => {
+    try {
+      const response = await fetch('/api/subtasks/update', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          subtask_id: subtaskId,
+          title: newTitle.trim(),
+          updated_by: currentUserId,
+        }),
+      })
+
+      if (response.ok) {
+        const updated = await response.json()
+        setSubtasks(prev => prev.map(s => (s.id === subtaskId ? updated : s)))
+        setEditingSubtaskId(null)
+      }
+    } catch (err) {
+      console.error('Failed to update subtask:', err)
+    }
+  }
+
+  const handleDeleteSubtask = async (subtaskId: string) => {
+    try {
+      const response = await fetch('/api/subtasks/delete', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          subtask_id: subtaskId,
+          deleted_by: currentUserId,
+        }),
+      })
+
+      if (response.ok) {
+        setSubtasks(prev => prev.filter(s => s.id !== subtaskId))
+      }
+    } catch (err) {
+      console.error('Failed to delete subtask:', err)
+    }
   }
 
   const handleSave = async () => {
@@ -338,6 +430,113 @@ export function TaskModal({
               className="w-full px-4 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:border-slate-600 focus:ring-1 focus:ring-slate-600 resize-none"
             />
           </div>
+
+          {/* Subtasks Section */}
+          {task?.id && (
+            <div className="border-t border-slate-700 pt-5">
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="text-sm font-semibold text-slate-300">Subtasks</h3>
+                <button
+                  onClick={() => setNewSubtaskTitle('')}
+                  className="inline-flex items-center gap-2 px-3 py-1 bg-slate-700 hover:bg-slate-600 text-slate-200 text-sm rounded-lg transition-colors"
+                >
+                  <Plus size={16} />
+                  Add
+                </button>
+              </div>
+
+              {subtasks.length === 0 && !newSubtaskTitle && (
+                <p className="text-slate-500 text-sm italic py-3">
+                  No subtasks yet. Add one to get started!
+                </p>
+              )}
+
+              {/* Subtask List */}
+              <div className="space-y-2">
+                {subtasks.map(subtask => (
+                  <div
+                    key={subtask.id}
+                    className="flex items-center gap-2 p-2 bg-slate-800 rounded-lg group"
+                  >
+                    <div className="text-slate-500 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <GripVertical size={16} />
+                    </div>
+
+                    {editingSubtaskId === subtask.id ? (
+                      <input
+                        autoFocus
+                        type="text"
+                        value={editingSubtaskTitle}
+                        onChange={e => setEditingSubtaskTitle(e.target.value)}
+                        onBlur={() => {
+                          if (editingSubtaskTitle.trim() && editingSubtaskTitle !== subtask.title) {
+                            handleUpdateSubtask(subtask.id, editingSubtaskTitle)
+                          } else {
+                            setEditingSubtaskId(null)
+                          }
+                        }}
+                        onKeyDown={e => {
+                          if (e.key === 'Enter') {
+                            if (editingSubtaskTitle.trim()) {
+                              handleUpdateSubtask(subtask.id, editingSubtaskTitle)
+                            }
+                          }
+                        }}
+                        className="flex-1 px-2 py-1 bg-slate-700 border border-slate-600 rounded text-white text-sm focus:outline-none focus:border-slate-500"
+                      />
+                    ) : (
+                      <button
+                        onClick={() => {
+                          setEditingSubtaskId(subtask.id)
+                          setEditingSubtaskTitle(subtask.title)
+                        }}
+                        className={`flex-1 text-left px-2 py-1 rounded text-sm ${
+                          subtask.completed
+                            ? 'text-slate-500 line-through'
+                            : 'text-slate-200'
+                        }`}
+                      >
+                        {subtask.title}
+                      </button>
+                    )}
+
+                    <button
+                      onClick={() => handleDeleteSubtask(subtask.id)}
+                      className="text-slate-500 hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100"
+                    >
+                      <Trash2 size={16} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+
+              {/* New Subtask Input */}
+              {newSubtaskTitle !== '' && (
+                <div className="flex items-center gap-2 p-2 bg-slate-800 rounded-lg mt-2">
+                  <input
+                    autoFocus
+                    type="text"
+                    value={newSubtaskTitle}
+                    onChange={e => setNewSubtaskTitle(e.target.value)}
+                    onKeyDown={e => {
+                      if (e.key === 'Enter') {
+                        handleAddSubtask()
+                      }
+                    }}
+                    placeholder="Type subtask title..."
+                    className="flex-1 px-2 py-1 bg-transparent text-white text-sm placeholder-slate-500 focus:outline-none"
+                  />
+                  <button
+                    onClick={handleAddSubtask}
+                    disabled={!newSubtaskTitle.trim()}
+                    className="px-3 py-1 bg-emerald-600 hover:bg-emerald-700 text-white text-sm rounded transition-colors disabled:opacity-50"
+                  >
+                    Save
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Error message */}
           {errors.submit && (
