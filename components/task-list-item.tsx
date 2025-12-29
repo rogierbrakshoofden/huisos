@@ -1,6 +1,6 @@
 // components/task-list-item.tsx
 import React, { useState } from 'react'
-import { ChevronDown, ChevronUp, Trash2 } from 'lucide-react'
+import { ChevronDown, ChevronUp } from 'lucide-react'
 import { Task, Subtask, FamilyMember } from '@/types/huisos-v2'
 import { FamilyMemberCircle } from '@/components/family-member-circle'
 
@@ -45,27 +45,32 @@ export function TaskListItem({
     <div
       className={`
         rounded-lg border transition-all duration-200
-        ${task.completed
-          ? 'bg-slate-800/30 border-slate-800/30'
-          : 'bg-slate-800/60 border-slate-700/50 hover:bg-slate-800/80'
+        ${
+          task.completed
+            ? 'bg-slate-800/30 border-slate-800/30'
+            : 'bg-slate-800/60 border-slate-700/50 hover:bg-slate-800/80'
         }
       `}
     >
+      {/* Main row */}
       <div className="flex items-center gap-3 p-4">
+        {/* Checkbox */}
         <button
           onClick={() => onComplete(task.id)}
           className={`
             w-6 h-6 rounded border-2 flex items-center justify-center
             transition-all duration-200 flex-shrink-0
-            ${task.completed
-              ? 'bg-emerald-600 border-emerald-500'
-              : 'border-slate-600 hover:border-slate-500'
+            ${
+              task.completed
+                ? 'bg-emerald-600 border-emerald-500'
+                : 'border-slate-600 hover:border-slate-500'
             }
           `}
         >
           {task.completed && <span className="text-white text-sm">✓</span>}
         </button>
 
+        {/* Task info */}
         <div className="flex-1 min-w-0">
           <div
             className={`
@@ -76,29 +81,34 @@ export function TaskListItem({
             {task.title}
           </div>
 
+          {/* Metadata */}
           <div className="flex items-center gap-2 mt-1 text-xs text-slate-400 flex-wrap">
+            {/* Recurrence badge */}
             {task.recurrence_type === 'repeating' && (
               <span className="px-2 py-0.5 rounded-full bg-slate-700/50 text-slate-300">
                 {task.frequency || 'Repeating'}
               </span>
             )}
 
+            {/* Due date */}
             {task.due_date && (
               <span
                 className={`
                   px-2 py-0.5 rounded-full
-                  ${isOverdue
-                    ? 'bg-red-900/50 text-red-200'
-                    : daysUntilDue === 0
-                      ? 'bg-amber-900/50 text-amber-200'
-                      : 'bg-slate-700/50 text-slate-300'
-                    }
+                  ${
+                    isOverdue
+                      ? 'bg-red-900/50 text-red-200'
+                      : daysUntilDue === 0
+                        ? 'bg-amber-900/50 text-amber-200'
+                        : 'bg-slate-700/50 text-slate-300'
+                  }
                 `}
               >
                 {daysUntilDue === 0 ? 'Due today' : `Due in ${daysUntilDue} days`}
               </span>
             )}
 
+            {/* Token value */}
             {task.token_value > 0 && (
               <span className="px-2 py-0.5 rounded-full bg-amber-900/50 text-amber-200">
                 +{task.token_value} 🎫
@@ -107,6 +117,7 @@ export function TaskListItem({
           </div>
         </div>
 
+        {/* Subtask progress pie or count */}
         {subtasks.length > 0 && (
           <div className="relative w-10 h-10 flex items-center justify-center flex-shrink-0">
             <svg className="w-10 h-10 transform -rotate-90" viewBox="0 0 100 100">
@@ -137,13 +148,14 @@ export function TaskListItem({
           </div>
         )}
 
+        {/* Assignee circles */}
         <div className="flex gap-1 flex-shrink-0">
           {assignees.slice(0, 2).map((member) => (
             <FamilyMemberCircle
               key={member.id}
-              member={member}
+              initials={member.initials}
+              color={member.color}
               size="sm"
-              showInitials
             />
           ))}
           {assignees.length > 2 && (
@@ -156,6 +168,7 @@ export function TaskListItem({
           )}
         </div>
 
+        {/* Expand button (if has subtasks) */}
         {subtasks.length > 0 && (
           <button
             onClick={() => setIsExpanded(!isExpanded)}
@@ -169,6 +182,7 @@ export function TaskListItem({
           </button>
         )}
 
+        {/* Edit button */}
         <button
           onClick={() => onEdit(task)}
           className="p-1 hover:bg-slate-700/50 rounded transition-colors flex-shrink-0"
@@ -189,6 +203,7 @@ export function TaskListItem({
         </button>
       </div>
 
+      {/* Subtasks expanded view */}
       {isExpanded && subtasks.length > 0 && (
         <div className="border-t border-slate-700/50 px-4 py-3 space-y-2 bg-slate-900/20">
           {subtasks.map((subtask) => (
@@ -201,10 +216,11 @@ export function TaskListItem({
                 className={`
                   w-4 h-4 rounded border flex items-center justify-center flex-shrink-0
                   transition-all duration-200
-                  ${subtask.completed
-                    ? 'bg-emerald-600 border-emerald-500'
-                    : 'border-slate-500 hover:border-slate-400'
-                    }
+                  ${
+                    subtask.completed
+                      ? 'bg-emerald-600 border-emerald-500'
+                      : 'border-slate-500 hover:border-slate-400'
+                  }
                 `}
               >
                 {subtask.completed && (
@@ -214,10 +230,11 @@ export function TaskListItem({
               <span
                 className={`
                   text-sm flex-1
-                  ${subtask.completed
-                    ? 'text-slate-500 line-through'
-                    : 'text-slate-300'
-                    }
+                  ${
+                    subtask.completed
+                      ? 'text-slate-500 line-through'
+                      : 'text-slate-300'
+                  }
                 `}
               >
                 {subtask.title}
