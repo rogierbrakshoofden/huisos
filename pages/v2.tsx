@@ -43,7 +43,7 @@ function V2DashboardContent() {
     dispatch({ type: 'SET_ACTIVE_USER', payload: userId })
   }
 
-  const handleCompleteTask = async (taskId: string) => {
+  const handleCompleteTask = (taskId: string) => {
     try {
       const activeUserId =
         state.activeUserId === 'everybody'
@@ -56,15 +56,17 @@ function V2DashboardContent() {
       if (!task) throw new Error('Task not found')
 
       // Update local state optimistically
+      const completedTask = {
+        ...task,
+        completed: true,
+        completed_at: new Date().toISOString(),
+        completed_by: activeUserId,
+        completed_date: new Date().toISOString().split('T')[0],
+      }
+
       dispatch({
         type: 'UPDATE_TASK',
-        payload: {
-          ...task,
-          completed: true,
-          completed_at: new Date().toISOString(),
-          completed_by: activeUserId,
-          completed_date: new Date().toISOString().split('T')[0],
-        },
+        payload: completedTask,
       })
 
       // Trigger confetti
@@ -74,36 +76,8 @@ function V2DashboardContent() {
         origin: { y: 0.6 },
       })
 
-      // Update DB in background (fire and forget)
-      void (async () => {
-        const updatePayload: any = {
-          completed: true,
-          completed_at: new Date().toISOString(),
-          completed_by: activeUserId,
-          completed_date: new Date().toISOString().split('T')[0],
-        }
-
-        await (supabase.from('tasks').update(updatePayload) as any).eq('id', taskId)
-
-        // Award tokens
-        if (task.token_value > 0) {
-          await (supabase.from('tokens').insert({
-            member_id: activeUserId,
-            amount: task.token_value,
-            reason: `Completed: ${task.title}`,
-            task_completion_id: taskId,
-          }) as any)
-        }
-
-        // Log activity
-        await (supabase.from('activity_log').insert({
-          actor_id: activeUserId,
-          action_type: 'task_completed',
-          entity_type: 'task',
-          entity_id: taskId,
-          metadata: { title: task.title, token_value: task.token_value },
-        }) as any)
-      })()
+      // TODO: Persist to DB in Phase 3 (task creation modal)
+      console.log('Task completed locally. DB sync in Phase 3.')
     } catch (err) {
       console.error('Failed to complete task:', err)
       dispatch({
@@ -113,12 +87,12 @@ function V2DashboardContent() {
     }
   }
 
-  const handleDeleteTask = async (taskId: string) => {
+  const handleDeleteTask = (taskId: string) => {
     if (!confirm('Are you sure you want to delete this task?')) return
 
     try {
       dispatch({ type: 'DELETE_TASK', payload: taskId })
-      void (supabase.from('tasks').delete().eq('id', taskId) as any)
+      console.log('Task deleted locally. DB sync in Phase 3.')
     } catch (err) {
       console.error('Failed to delete task:', err)
       dispatch({
