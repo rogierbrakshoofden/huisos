@@ -14,7 +14,7 @@ import { TokenWidget } from '@/components/token-widget'
 import { RewardStoreModal } from '@/components/reward-store-modal'
 import { MyRewardsTab } from '@/components/my-rewards-tab'
 import { StatsTab } from '@/components/stats-tab'
-import { Task, Event } from '@/types/huisos-v2'
+import { Task, Event, Subtask } from '@/types/huisos-v2'
 import confetti from 'canvas-confetti'
 
 export default function V2Dashboard() {
@@ -401,6 +401,56 @@ function V2DashboardContent() {
     }
   }
 
+  const handleToggleSubtask = async (subtaskId: string) => {
+    try {
+      // Find the subtask to get context
+      let targetSubtask: Subtask | null = null
+      for (const [, subtasks] of state.subtasks) {
+        const found = subtasks.find(s => s.id === subtaskId)
+        if (found) {
+          targetSubtask = found
+          break
+        }
+      }
+
+      if (!targetSubtask) return
+
+      const activeUserId =
+        state.activeUserId === 'everybody'
+          ? state.familyMembers[0]?.id
+          : (state.activeUserId as string)
+
+      if (!activeUserId) throw new Error('No active user')
+
+      // Toggle completion status
+      if (!targetSubtask.completed) {
+        // Complete the subtask
+        const response = await fetch('/api/subtasks/complete', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            subtask_id: subtaskId,
+            completed_by: activeUserId,
+          }),
+        })
+
+        if (!response.ok) {
+          throw new Error('Failed to complete subtask')
+        }
+
+        const updatedSubtask = await response.json()
+        dispatch({
+          type: 'UPDATE_SUBTASK',
+          payload: updatedSubtask as Subtask,
+        })
+        toast('✓ Subtask completed', 'success')
+      }
+    } catch (err) {
+      console.error('Failed to toggle subtask:', err)
+      toast((err as Error).message, 'error')
+    }
+  }
+
   // Phase 5: Rewards
   const handleRedeemReward = async (rewardId: string) => {
     const activeUserId =
@@ -604,10 +654,12 @@ function V2DashboardContent() {
                   <TaskListItem
                     key={task.id}
                     task={task}
+                    subtasks={state.subtasks.get(task.id) || []}
                     assignees={getTaskAssignees(task)}
                     onComplete={handleCompleteTask}
                     onEdit={handleEditTask}
                     onDelete={handleDeleteTask}
+                    onToggleSubtask={handleToggleSubtask}
                     currentUserId={currentUserId}
                   />
                 ))}
@@ -757,7 +809,7 @@ function V2DashboardContent() {
       />
 
       <div className="fixed bottom-32 left-4 text-xs text-slate-600 pointer-events-none">
-        <p>Phase 6: Automation & Analytics 🚀</p>
+        <p>Phase 7: Subtasks Complete! 🎯</p>
         <p>Realtime sync: {isOnline ? '🟢' : '🔴'}</p>
       </div>
     </div>
