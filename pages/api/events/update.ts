@@ -34,8 +34,8 @@ export default async function handler(
       return res.status(400).json({ error: 'eventId is required' })
     }
 
-    // Update event - only pass fields that are defined
-    const updatePayload: any = {}
+    // Build update object
+    const updatePayload: Record<string, any> = {}
     if (title !== undefined) updatePayload.title = title?.trim() || ''
     if (datetime !== undefined) updatePayload.datetime = datetime || null
     if (all_day !== undefined) updatePayload.all_day = all_day
@@ -44,12 +44,15 @@ export default async function handler(
     if (notes !== undefined) updatePayload.notes = notes?.trim() || null
     updatePayload.updated_at = new Date().toISOString()
 
-    const { data: eventData, error: eventError } = await supabase
+    // Cast the entire query to bypass Supabase type inference issues
+    const result = await (supabase
       .from('events')
       .update(updatePayload)
       .eq('id', eventId)
       .select()
-      .single()
+      .single() as any)
+
+    const { data: eventData, error: eventError } = result
 
     if (eventError || !eventData) {
       console.error('Event update error:', eventError)
