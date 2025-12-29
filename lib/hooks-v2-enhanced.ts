@@ -2,6 +2,7 @@
 import { useEffect, useRef, useCallback } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useApp } from '@/lib/context-v2'
+import type { Subtask } from '@/types/huisos-v2'
 
 const POLL_INTERVAL = 30000 // 30 seconds
 
@@ -42,10 +43,10 @@ export function useRealtimeSync() {
         .select('*')
         .order('parent_task_id')
         .order('order_index', { ascending: true })
-      if (subtasks) {
+      if (subtasks && subtasks.length > 0) {
         // Group subtasks by parent_task_id
-        const subtasksByTask = new Map<string, any[]>()
-        subtasks.forEach((st) => {
+        const subtasksByTask = new Map<string, Subtask[]>()
+        ;(subtasks as Subtask[]).forEach((st) => {
           const taskId = st.parent_task_id
           if (!subtasksByTask.has(taskId)) {
             subtasksByTask.set(taskId, [])
@@ -153,17 +154,18 @@ export function useRealtimeSync() {
         },
         async (payload) => {
           try {
+            const parentTaskId = (payload.new as Subtask)?.parent_task_id || (payload.old as Subtask)?.parent_task_id
             const { data: subtasks } = await supabase
               .from('subtasks')
               .select('*')
-              .eq('parent_task_id', (payload.new as any).parent_task_id || (payload.old as any).parent_task_id)
+              .eq('parent_task_id', parentTaskId)
               .order('order_index', { ascending: true })
             if (subtasks) {
               dispatch({
                 type: 'REORDER_SUBTASKS',
                 payload: {
-                  taskId: (payload.new as any).parent_task_id || (payload.old as any).parent_task_id,
-                  subtasks: subtasks as any,
+                  taskId: parentTaskId,
+                  subtasks: subtasks as Subtask[],
                 },
               })
             }
