@@ -1,8 +1,11 @@
 // components/task-list-item.tsx
+'use client'
+
 import React, { useState } from 'react'
 import { ChevronDown, ChevronUp } from 'lucide-react'
 import { Task, Subtask, FamilyMember } from '@/types/huisos-v2'
 import { FamilyMemberCircle } from '@/components/family-member-circle'
+import { SubtaskProgressPie } from '@/components/subtask-progress-pie'
 
 interface TaskListItemProps {
   task: Task
@@ -26,11 +29,10 @@ export function TaskListItem({
   currentUserId,
 }: TaskListItemProps) {
   const [isExpanded, setIsExpanded] = useState(false)
+  const [completingSubtaskId, setCompletingSubtaskId] = useState<string | null>(null)
 
-  const subtaskProgress =
-    subtasks.length > 0
-      ? Math.round((subtasks.filter((s) => s.completed).length / subtasks.length) * 100)
-      : 0
+  const completedCount = subtasks.filter((s) => s.completed).length
+  const assigneeColor = assignees[0]?.color || '#8B5CF6'
 
   const daysUntilDue = task.due_date
     ? Math.ceil(
@@ -40,6 +42,28 @@ export function TaskListItem({
     : null
 
   const isOverdue = daysUntilDue !== null && daysUntilDue < 0
+
+  const handleCompleteSubtask = async (subtaskId: string) => {
+    setCompletingSubtaskId(subtaskId)
+    try {
+      const response = await fetch('/api/subtasks/complete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          subtask_id: subtaskId,
+          completed_by: currentUserId,
+        }),
+      })
+
+      if (response.ok) {
+        onToggleSubtask?.(subtaskId)
+      }
+    } catch (err) {
+      console.error('Failed to complete subtask:', err)
+    } finally {
+      setCompletingSubtaskId(null)
+    }
+  }
 
   return (
     <div
@@ -54,21 +78,32 @@ export function TaskListItem({
     >
       {/* Main row */}
       <div className="flex items-center gap-3 p-4">
-        {/* Checkbox */}
-        <button
-          onClick={() => onComplete(task.id)}
-          className={`
-            w-6 h-6 rounded border-2 flex items-center justify-center
-            transition-all duration-200 flex-shrink-0
-            ${
-              task.completed
-                ? 'bg-emerald-600 border-emerald-500'
-                : 'border-slate-600 hover:border-slate-500'
-            }
-          `}
-        >
-          {task.completed && <span className="text-white text-sm">✓</span>}
-        </button>
+        {/* Checkbox or Progress Pie */}
+        {subtasks.length > 0 ? (
+          <div className="flex-shrink-0 cursor-pointer" onClick={() => setIsExpanded(!isExpanded)}>
+            <SubtaskProgressPie
+              completed={completedCount}
+              total={subtasks.length}
+              color={assigneeColor}
+              size="md"
+            />
+          </div>
+        ) : (
+          <button
+            onClick={() => onComplete(task.id)}
+            className={`
+              w-6 h-6 rounded border-2 flex items-center justify-center
+              transition-all duration-200 flex-shrink-0
+              ${
+                task.completed
+                  ? 'bg-emerald-600 border-emerald-500'
+                  : 'border-slate-600 hover:border-slate-500'
+              }
+            `}
+          >
+            {task.completed && <span className="text-white text-sm">✓</span>}
+          </button>
+        )}
 
         {/* Task info */}
         <div className="flex-1 min-w-0">
@@ -116,37 +151,6 @@ export function TaskListItem({
             )}
           </div>
         </div>
-
-        {/* Subtask progress pie or count */}
-        {subtasks.length > 0 && (
-          <div className="relative w-10 h-10 flex items-center justify-center flex-shrink-0">
-            <svg className="w-10 h-10 transform -rotate-90" viewBox="0 0 100 100">
-              <circle
-                cx="50"
-                cy="50"
-                r="45"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="8"
-                className="text-slate-700"
-              />
-              <circle
-                cx="50"
-                cy="50"
-                r="45"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="8"
-                strokeDasharray={`${(subtaskProgress / 100) * 283}`}
-                strokeDashoffset="0"
-                className="text-emerald-500 transition-all duration-300"
-              />
-            </svg>
-            <span className="absolute text-xs font-bold text-slate-300">
-              {subtasks.filter((s) => s.completed).length}/{subtasks.length}
-            </span>
-          </div>
-        )}
 
         {/* Assignee circles */}
         <div className="flex gap-1 flex-shrink-0">
@@ -212,10 +216,11 @@ export function TaskListItem({
               className="flex items-center gap-3 p-2 rounded hover:bg-slate-800/30 transition-colors"
             >
               <button
-                onClick={() => onToggleSubtask?.(subtask.id)}
+                onClick={() => handleCompleteSubtask(subtask.id)}
+                disabled={completingSubtaskId === subtask.id}
                 className={`
                   w-4 h-4 rounded border flex items-center justify-center flex-shrink-0
-                  transition-all duration-200
+                  transition-all duration-200 disabled:opacity-50
                   ${
                     subtask.completed
                       ? 'bg-emerald-600 border-emerald-500'
