@@ -95,7 +95,7 @@ export default async function handler(
 
     // Log activity
     const actorId = updateData.completed_by || 'system'
-    await supabase.from('activity_log').insert({
+    await (supabase as any).from('activity_log').insert({
       actor_id: actorId,
       action_type: updateData.completed ? 'task_completed' : 'task_edited',
       entity_type: 'task',
