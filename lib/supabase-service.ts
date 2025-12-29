@@ -22,7 +22,6 @@ export async function fetchTasks(userId?: string): Promise<Task[]> {
   let query = supabase.from('tasks').select('*')
 
   if (userId && userId !== 'everybody') {
-    // Filter by user as assignee
     query = query.contains('assignee_ids', `["${userId}"]`)
   }
 
@@ -32,7 +31,7 @@ export async function fetchTasks(userId?: string): Promise<Task[]> {
     .order('created_at', { ascending: false })
 
   if (error) throw error
-  return data || []
+  return data as Task[] || []
 }
 
 /**
@@ -42,7 +41,6 @@ export async function fetchEvents(userId?: string): Promise<Event[]> {
   let query = supabase.from('events').select('*')
 
   if (userId && userId !== 'everybody') {
-    // Filter by user as attendee
     query = query.contains('member_ids', `["${userId}"]`)
   }
 
@@ -50,7 +48,7 @@ export async function fetchEvents(userId?: string): Promise<Event[]> {
     .order('datetime', { ascending: true })
 
   if (error) throw error
-  return data || []
+  return data as Event[] || []
 }
 
 /**
@@ -85,15 +83,26 @@ export async function fetchSubtasks(taskId: string): Promise<Subtask[]> {
  * Create a new task
  */
 export async function createTask(
-  task: Omit<Task, 'id' | 'created_at' | 'updated_at'>,
+  task: Partial<Task>,
   userId: string
 ): Promise<Task> {
   const { data, error } = await supabase
     .from('tasks')
     .insert({
-      ...task,
+      title: task.title || '',
+      description: task.description,
+      recurrence_type: task.recurrence_type || 'once',
+      frequency: task.frequency,
+      recurrence_end_date: task.recurrence_end_date,
+      assignee_ids: task.assignee_ids || [],
+      rotation_enabled: task.rotation_enabled || false,
+      rotation_index: task.rotation_index || 0,
+      rotation_exclude_ids: task.rotation_exclude_ids || [],
+      due_date: task.due_date,
+      notes: task.notes,
+      token_value: task.token_value || 1,
       created_by: userId,
-    })
+    } as any)
     .select()
     .single()
 
@@ -110,7 +119,7 @@ export async function updateTask(taskId: string, updates: Partial<Task>): Promis
     .update({
       ...updates,
       updated_at: new Date().toISOString(),
-    })
+    } as any)
     .eq('id', taskId)
     .select()
     .single()
@@ -135,7 +144,6 @@ export async function deleteTask(taskId: string): Promise<void> {
  * Complete a task and handle rotation + tokens
  */
 export async function completeTask(taskId: string, userId: string): Promise<Task> {
-  // Mark task as complete
   const { data: task, error: updateError } = await supabase
     .from('tasks')
     .update({
@@ -143,7 +151,8 @@ export async function completeTask(taskId: string, userId: string): Promise<Task
       completed_at: new Date().toISOString(),
       completed_by: userId,
       completed_date: new Date().toISOString().split('T')[0],
-    })
+      updated_at: new Date().toISOString(),
+    } as any)
     .eq('id', taskId)
     .select()
     .single()
@@ -163,7 +172,7 @@ export async function completeTask(taskId: string, userId: string): Promise<Task
       amount: task.token_value,
       reason: `Completed: ${task.title}`,
       task_completion_id: taskId,
-    })
+    } as any)
   }
 
   // Log activity
@@ -201,12 +210,18 @@ function getNextRotationIndex(task: Task): number {
  * Create a new event
  */
 export async function createEvent(
-  event: Omit<Event, 'id' | 'created_at'>,
+  event: Partial<Event>,
   userId: string
 ): Promise<Event> {
   const { data, error } = await supabase
     .from('events')
-    .insert(event)
+    .insert({
+      title: event.title || '',
+      datetime: event.datetime,
+      all_day: event.all_day || false,
+      member_ids: event.member_ids || [],
+      notes: event.notes,
+    } as any)
     .select()
     .single()
 
@@ -223,7 +238,7 @@ export async function updateEvent(eventId: string, updates: Partial<Event>): Pro
     .update({
       ...updates,
       updated_at: new Date().toISOString(),
-    })
+    } as any)
     .eq('id', eventId)
     .select()
     .single()
@@ -250,7 +265,7 @@ export async function deleteEvent(eventId: string): Promise<void> {
 export async function logActivity(log: Omit<ActivityLogEntry, 'id' | 'created_at'>): Promise<void> {
   const { error } = await supabase
     .from('activity_log')
-    .insert(log)
+    .insert(log as any)
 
   if (error) throw error
 }
@@ -271,7 +286,7 @@ export async function createSubtask(
       title,
       description,
       order_index: orderIndex,
-    })
+    } as any)
     .select()
     .single()
 
@@ -291,7 +306,7 @@ export async function updateSubtask(
     .update({
       ...updates,
       updated_at: new Date().toISOString(),
-    })
+    } as any)
     .eq('id', subtaskId)
     .select()
     .single()
@@ -322,7 +337,8 @@ export async function completeSubtask(subtaskId: string, userId: string): Promis
       completed: true,
       completed_at: new Date().toISOString(),
       completed_by: userId,
-    })
+      updated_at: new Date().toISOString(),
+    } as any)
     .eq('id', subtaskId)
     .select()
     .single()
