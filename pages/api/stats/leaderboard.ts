@@ -88,7 +88,7 @@ export default async function handler(
           tasksCompleted: memberTasks.length,
         }
       })
-      .sort((a, b) => b.tokenCount - a.tokenCount)
+      .sort((a: LeaderboardEntry, b: LeaderboardEntry) => b.tokenCount - a.tokenCount)
       .map((entry, index) => ({
         ...entry,
         rank: index + 1,
