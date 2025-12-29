@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useReducer, useEffect, ReactNode } from 'react'
-import { AppState, Task, Event, ActivityLogEntry, FamilyMember } from '@/types/huisos-v2'
+import { AppState, Task, Event, ActivityLogEntry, FamilyMember, RewardClaim } from '@/types/huisos-v2'
 
 const AppContext = createContext<{
   state: AppState
@@ -19,7 +19,7 @@ export type AppAction =
   | { type: 'DELETE_EVENT'; payload: string }
   | { type: 'SET_ACTIVITY_LOG'; payload: ActivityLogEntry[] }
   | { type: 'ADD_LOG_ENTRY'; payload: ActivityLogEntry }
-  | { type: 'SET_ACTIVE_TAB'; payload: 'work' | 'events' | 'log' }
+  | { type: 'SET_ACTIVE_TAB'; payload: 'work' | 'events' | 'log' | 'rewards' }
   | { type: 'OPEN_TASK_MODAL'; payload: Task | null }
   | { type: 'OPEN_EVENT_MODAL'; payload: Event | null }
   | { type: 'CLOSE_MODAL' }
@@ -28,6 +28,9 @@ export type AppAction =
   | { type: 'SET_LAST_SYNCED'; payload: Date }
   | { type: 'SET_SYNC_ERROR'; payload: string | undefined }
   | { type: 'SET_LOADING'; payload: boolean }
+  | { type: 'SET_REWARD_CLAIMS'; payload: RewardClaim[] }
+  | { type: 'ADD_REWARD_CLAIM'; payload: RewardClaim }
+  | { type: 'UPDATE_REWARD_CLAIM'; payload: RewardClaim }
 
 const initialState: AppState = {
   activeUserId: 'everybody',
@@ -38,6 +41,7 @@ const initialState: AppState = {
   activityLog: [],
   tokens: [],
   rewards: [],
+  rewardClaims: [],
   presence: [],
   activeTab: 'work',
   modalOpen: null,
@@ -116,6 +120,15 @@ function appReducer(state: AppState, action: AppAction): AppState {
       return { ...state, syncError: action.payload }
     case 'SET_LOADING':
       return { ...state, isLoading: action.payload }
+    case 'SET_REWARD_CLAIMS':
+      return { ...state, rewardClaims: action.payload }
+    case 'ADD_REWARD_CLAIM':
+      return { ...state, rewardClaims: [...state.rewardClaims, action.payload] }
+    case 'UPDATE_REWARD_CLAIM':
+      return {
+        ...state,
+        rewardClaims: state.rewardClaims.map(c => (c.id === action.payload.id ? action.payload : c)),
+      }
     default:
       return state
   }
