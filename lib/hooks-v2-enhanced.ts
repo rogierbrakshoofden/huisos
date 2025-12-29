@@ -2,12 +2,6 @@
 import { useEffect, useRef, useCallback } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useApp } from '@/lib/context-v2'
-import {
-  fetchFamilyMembers,
-  fetchTasks,
-  fetchEvents,
-  fetchActivityLog,
-} from '@/lib/supabase-service'
 
 const POLL_INTERVAL = 30000 // 30 seconds
 
@@ -24,20 +18,42 @@ export function useRealtimeSync() {
     dispatch({ type: 'SET_LOADING', payload: true })
     try {
       // Load family members
-      const members = await fetchFamilyMembers()
-      dispatch({ type: 'SET_FAMILY_MEMBERS', payload: members })
+      const { data: members } = await supabase
+        .from('family_members')
+        .select('*')
+        .order('name', { ascending: true })
+      if (members) {
+        dispatch({ type: 'SET_FAMILY_MEMBERS', payload: members as any })
+      }
 
-      // Load tasks (all for now, filtering happens in selectors)
-      const tasks = await fetchTasks('everybody')
-      dispatch({ type: 'SET_TASKS', payload: tasks })
+      // Load tasks
+      const { data: tasks } = await supabase
+        .from('tasks')
+        .select('*')
+        .order('completed', { ascending: true })
+        .order('created_at', { ascending: false })
+      if (tasks) {
+        dispatch({ type: 'SET_TASKS', payload: tasks as any })
+      }
 
       // Load events
-      const events = await fetchEvents('everybody')
-      dispatch({ type: 'SET_EVENTS', payload: events })
+      const { data: events } = await supabase
+        .from('events')
+        .select('*')
+        .order('datetime', { ascending: true })
+      if (events) {
+        dispatch({ type: 'SET_EVENTS', payload: events as any })
+      }
 
       // Load activity log
-      const activityLog = await fetchActivityLog(100, 0)
-      dispatch({ type: 'SET_ACTIVITY_LOG', payload: activityLog })
+      const { data: activityLog } = await supabase
+        .from('activity_log')
+        .select('*, actor:family_members(*)')
+        .order('created_at', { ascending: false })
+        .limit(100)
+      if (activityLog) {
+        dispatch({ type: 'SET_ACTIVITY_LOG', payload: activityLog as any })
+      }
 
       dispatch({ type: 'SET_LAST_SYNCED', payload: new Date() })
       dispatch({ type: 'SET_SYNC_ERROR', payload: undefined })
@@ -63,10 +79,16 @@ export function useRealtimeSync() {
           schema: 'public',
           table: 'tasks',
         },
-        async (payload) => {
+        async () => {
           try {
-            const tasks = await fetchTasks('everybody')
-            dispatch({ type: 'SET_TASKS', payload: tasks })
+            const { data: tasks } = await supabase
+              .from('tasks')
+              .select('*')
+              .order('completed', { ascending: true })
+              .order('created_at', { ascending: false })
+            if (tasks) {
+              dispatch({ type: 'SET_TASKS', payload: tasks as any })
+            }
           } catch (err) {
             console.error('Failed to refetch tasks:', err)
           }
@@ -84,10 +106,15 @@ export function useRealtimeSync() {
           schema: 'public',
           table: 'events',
         },
-        async (payload) => {
+        async () => {
           try {
-            const events = await fetchEvents('everybody')
-            dispatch({ type: 'SET_EVENTS', payload: events })
+            const { data: events } = await supabase
+              .from('events')
+              .select('*')
+              .order('datetime', { ascending: true })
+            if (events) {
+              dispatch({ type: 'SET_EVENTS', payload: events as any })
+            }
           } catch (err) {
             console.error('Failed to refetch events:', err)
           }
@@ -95,7 +122,7 @@ export function useRealtimeSync() {
       )
       .subscribe()
 
-    // Subscribe to activity log (INSERT only)
+    // Subscribe to activity log
     const logSub = supabase
       .channel('activity_log')
       .on(
@@ -110,7 +137,7 @@ export function useRealtimeSync() {
             const { data } = await supabase
               .from('activity_log')
               .select('*, actor:family_members(*)')
-              .eq('id', payload.new.id)
+              .eq('id', (payload.new as any).id)
               .single()
             if (data) {
               dispatch({ type: 'ADD_LOG_ENTRY', payload: data as any })
@@ -138,8 +165,14 @@ export function useRealtimeSync() {
       if (!state.isOnline) return
 
       try {
-        const tasks = await fetchTasks('everybody')
-        dispatch({ type: 'SET_TASKS', payload: tasks })
+        const { data: tasks } = await supabase
+          .from('tasks')
+          .select('*')
+          .order('completed', { ascending: true })
+          .order('created_at', { ascending: false })
+        if (tasks) {
+          dispatch({ type: 'SET_TASKS', payload: tasks as any })
+        }
         dispatch({ type: 'SET_LAST_SYNCED', payload: new Date() })
       } catch (err) {
         console.error('Polling failed:', err)
