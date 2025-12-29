@@ -49,7 +49,7 @@ export default async function handler(
     }
 
     // Insert event using object syntax
-    const { data: event, error: eventError } = await supabase
+    const { data: eventData, error: eventError } = await supabase
       .from('events')
       .insert({
         title: title.trim(),
@@ -62,10 +62,12 @@ export default async function handler(
       .select()
       .single()
 
-    if (eventError || !event) {
+    if (eventError || !eventData) {
       console.error('Event insert error:', eventError)
       return res.status(500).json({ error: 'Failed to create event' })
     }
+
+    const event = eventData as Event
 
     // Log activity
     await supabase.from('activity_log').insert({
@@ -79,7 +81,7 @@ export default async function handler(
       },
     } as any)
 
-    return res.status(201).json(event as Event)
+    return res.status(201).json(event)
   } catch (err) {
     console.error('API error:', err)
     return res.status(500).json({ error: 'Internal server error' })
