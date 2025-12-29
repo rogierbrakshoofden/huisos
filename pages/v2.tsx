@@ -52,52 +52,61 @@ function V2DashboardContent() {
 
       if (!activeUserId) throw new Error('No active user')
 
-      // Update task
-      const { data: task, error } = await (supabase
-        .from('tasks')
-        .update({
+      const task = state.tasks.find(t => t.id === taskId)
+      if (!task) throw new Error('Task not found')
+
+      // Update local state optimistically
+      dispatch({
+        type: 'UPDATE_TASK',
+        payload: {
+          ...task,
           completed: true,
           completed_at: new Date().toISOString(),
           completed_by: activeUserId,
           completed_date: new Date().toISOString().split('T')[0],
-        }) as any)
-        .eq('id', taskId)
-        .select()
-        .single()
+        },
+      })
 
-      if (error) throw error
-
-      dispatch({ type: 'UPDATE_TASK', payload: task as any })
-
-      // Award tokens
-      if ((task as any).token_value > 0) {
-        await supabase.from('tokens').insert({
-          member_id: activeUserId,
-          amount: (task as any).token_value,
-          reason: `Completed: ${(task as any).title}`,
-          task_completion_id: taskId,
-        } as any)
-      }
-
-      // Log activity
-      await supabase.from('activity_log').insert({
-        actor_id: activeUserId,
-        action_type: 'task_completed',
-        entity_type: 'task',
-        entity_id: taskId,
-        metadata: { title: (task as any).title, token_value: (task as any).token_value },
-      } as any)
-
+      // Trigger confetti
       confetti({
         particleCount: 100,
         spread: 70,
         origin: { y: 0.6 },
       })
+
+      // Update DB in background (fire and forget)
+      const updatePayload: any = {
+        completed: true,
+        completed_at: new Date().toISOString(),
+        completed_by: activeUserId,
+        completed_date: new Date().toISOString().split('T')[0],
+      }
+
+      supabase.from('tasks').update(updatePayload).eq('id', taskId).then(() => {
+        // Award tokens
+        if (task.token_value > 0) {
+          supabase.from('tokens').insert({
+            member_id: activeUserId,
+            amount: task.token_value,
+            reason: `Completed: ${task.title}`,
+            task_completion_id: taskId,
+          })
+        }
+
+        // Log activity
+        supabase.from('activity_log').insert({
+          actor_id: activeUserId,
+          action_type: 'task_completed',
+          entity_type: 'task',
+          entity_id: taskId,
+          metadata: { title: task.title, token_value: task.token_value },
+        })
+      })
     } catch (err) {
       console.error('Failed to complete task:', err)
       dispatch({
         type: 'SET_SYNC_ERROR',
-        payload: `Failed to complete task: ${(err as Error).message}`,
+        payload: `Failed: ${(err as Error).message}`,
       })
     }
   }
@@ -106,18 +115,13 @@ function V2DashboardContent() {
     if (!confirm('Are you sure you want to delete this task?')) return
 
     try {
-      const { error } = await supabase
-        .from('tasks')
-        .delete()
-        .eq('id', taskId)
-
-      if (error) throw error
       dispatch({ type: 'DELETE_TASK', payload: taskId })
+      supabase.from('tasks').delete().eq('id', taskId)
     } catch (err) {
       console.error('Failed to delete task:', err)
       dispatch({
         type: 'SET_SYNC_ERROR',
-        payload: `Failed to delete task: ${(err as Error).message}`,
+        payload: `Failed: ${(err as Error).message}`,
       })
     }
   }
