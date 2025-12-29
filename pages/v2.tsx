@@ -9,7 +9,6 @@ import { AddButton } from '@/components/add-button'
 import { TaskListItem } from '@/components/task-list-item'
 import { TaskModal } from '@/components/task-modal'
 import { Task } from '@/types/huisos-v2'
-import { supabase } from '@/lib/supabase'
 import confetti from 'canvas-confetti'
 
 export default function V2Dashboard() {
@@ -72,34 +71,11 @@ function V2DashboardContent() {
 
     try {
       if (editingTask) {
-        // Update existing task
+        // Update existing task (local state only, DB in Phase 4)
         dispatch({
           type: 'UPDATE_TASK',
           payload: { ...editingTask, ...taskData } as Task,
         })
-
-        // Persist to DB (fire and forget)
-        const updatePayload: any = {
-          title: taskData.title,
-          description: taskData.description,
-          recurrence_type: taskData.recurrence_type,
-          frequency: taskData.frequency,
-          due_date: taskData.due_date,
-          assignee_ids: taskData.assignee_ids,
-          token_value: taskData.token_value,
-          notes: taskData.notes,
-          updated_at: new Date().toISOString(),
-        }
-        ;(supabase.from('tasks').update(updatePayload) as any).eq('id', editingTask.id)
-
-        // Log activity
-        ;(supabase.from('activity_log').insert({
-          actor_id: activeUserId,
-          action_type: 'task_edited',
-          entity_type: 'task',
-          entity_id: editingTask.id,
-          metadata: { title: taskData.title },
-        }) as any)
       } else {
         // Create new task - optimistic update
         const newTask: Task = {
@@ -124,42 +100,6 @@ function V2DashboardContent() {
           updated_at: new Date().toISOString(),
         }
         dispatch({ type: 'ADD_TASK', payload: newTask })
-
-        // Persist to DB (fire and forget)
-        const insertPayload: any = {
-          title: taskData.title,
-          description: taskData.description,
-          recurrence_type: taskData.recurrence_type || 'once',
-          frequency: taskData.frequency,
-          due_date: taskData.due_date,
-          assignee_ids: taskData.assignee_ids || [],
-          token_value: taskData.token_value || 1,
-          notes: taskData.notes,
-          created_by: activeUserId,
-        }
-
-        ;(async () => {
-          const { data: createdTask } = await (supabase
-            .from('tasks')
-            .insert(insertPayload) as any)
-            .select()
-            .single()
-
-          if (createdTask) {
-            // Replace optimistic task with real one
-            dispatch({ type: 'DELETE_TASK', payload: newTask.id })
-            dispatch({ type: 'ADD_TASK', payload: createdTask })
-
-            // Log activity
-            ;(supabase.from('activity_log').insert({
-              actor_id: activeUserId,
-              action_type: 'task_created',
-              entity_type: 'task',
-              entity_id: createdTask.id,
-              metadata: { title: taskData.title, token_value: taskData.token_value },
-            }) as any)
-          }
-        })()
       }
     } catch (err) {
       dispatch({
@@ -172,23 +112,6 @@ function V2DashboardContent() {
 
   const handleDeleteTask = async (taskId: string) => {
     dispatch({ type: 'DELETE_TASK', payload: taskId })
-
-    const activeUserId =
-      state.activeUserId === 'everybody'
-        ? state.familyMembers[0]?.id
-        : (state.activeUserId as string)
-
-    // Delete from DB (fire and forget)
-    ;(supabase.from('tasks').delete() as any).eq('id', taskId)
-
-    // Log activity
-    ;(supabase.from('activity_log').insert({
-      actor_id: activeUserId,
-      action_type: 'task_deleted',
-      entity_type: 'task',
-      entity_id: taskId,
-      metadata: {},
-    }) as any)
   }
 
   const handleCompleteTask = (taskId: string) => {
@@ -221,35 +144,6 @@ function V2DashboardContent() {
         spread: 70,
         origin: { y: 0.6 },
       })
-
-      // Persist to DB (fire and forget)
-      const updatePayload: any = {
-        completed: true,
-        completed_at: new Date().toISOString(),
-        completed_by: activeUserId,
-        completed_date: new Date().toISOString().split('T')[0],
-      }
-
-      ;(supabase.from('tasks').update(updatePayload) as any).eq('id', taskId)
-
-      // Award tokens
-      if (task.token_value > 0) {
-        ;(supabase.from('tokens').insert({
-          member_id: activeUserId,
-          amount: task.token_value,
-          reason: `Completed: ${task.title}`,
-          task_completion_id: taskId,
-        }) as any)
-      }
-
-      // Log activity
-      ;(supabase.from('activity_log').insert({
-        actor_id: activeUserId,
-        action_type: 'task_completed',
-        entity_type: 'task',
-        entity_id: taskId,
-        metadata: { title: task.title, token_value: task.token_value },
-      }) as any)
     } catch (err) {
       console.error('Failed to complete task:', err)
       dispatch({
@@ -424,7 +318,7 @@ function V2DashboardContent() {
       />
 
       <div className="fixed bottom-32 left-4 text-xs text-slate-600 pointer-events-none">
-        <p>Phase 3: Live ✓</p>
+        <p>Phase 3: Modal UI ✓</p>
         <p>Realtime sync: {isOnline ? '🟢' : '🔴'}</p>
       </div>
     </div>
