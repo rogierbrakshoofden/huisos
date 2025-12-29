@@ -104,6 +104,43 @@ export default async function handler(
       },
     } as any)
 
+    // Auto-rotate if enabled
+    if (task.rotation_enabled && task.assignee_ids && task.assignee_ids.length > 0) {
+      const availableAssignees = task.assignee_ids.filter(
+        (id) => !(task.rotation_exclude_ids || []).includes(id)
+      )
+
+      if (availableAssignees.length > 0) {
+        const currentIndex = task.rotation_index || 0
+        const nextIndex = (currentIndex + 1) % availableAssignees.length
+        const nextAssigneeId = availableAssignees[nextIndex]
+
+        // Call rotation endpoint
+        try {
+          const appUrl = process.env.VERCEL_URL
+            ? `https://${process.env.VERCEL_URL}`
+            : 'http://localhost:3000'
+
+          const rotateRes = await fetch(`${appUrl}/api/tasks/rotate`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              taskId: taskId,
+              nextAssigneeId: nextAssigneeId,
+              completedBy: completedBy,
+            }),
+          })
+
+          if (!rotateRes.ok) {
+            console.warn('Rotation failed:', await rotateRes.text())
+            // Don't fail the completion, just warn
+          }
+        } catch (err) {
+          console.warn('Rotation error:', err)
+        }
+      }
+    }
+
     return res.status(200).json(updatedTask as Task)
   } catch (err) {
     console.error('API error:', err)
