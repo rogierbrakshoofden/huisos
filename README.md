@@ -10,6 +10,7 @@ A household management system for the family. Track chores, tasks, events, and p
 - 👥 **Presence**: Track who's home (morning/afternoon/evening)
 - 🎮 **Tokens**: Gamification system for Quinten
 - 🔔 **Notifications**: Push notifications for daily overview and reminders
+- 📊 **Analytics**: Family leaderboards and stats dashboard
 
 ## Tech Stack
 
@@ -116,42 +117,42 @@ huisos/
 
 ## Development Roadmap
 
-### Phase 1: Core (MVP) - In Progress
+### Phase 1: Core (MVP) - ✅ Complete
 - [x] Supabase setup + schema
 - [x] Family members seeded
 - [x] Next.js project with shadcn/ui
 - [x] Chores list + rotation
 - [x] Dashboard view
 - [x] Complete chore flow (with confetti)
-- [ ] Basic mobile responsive
 
-### Phase 2: Tasks & Events
-- [ ] Tasks CRUD
-- [ ] Events CRUD
-- [ ] Calendar week view
-- [ ] Quick add modal
+### Phase 2: Tasks & Events - ✅ Complete
+- [x] Tasks CRUD
+- [x] Events CRUD
+- [x] Calendar week view
+- [x] Quick add modal
 
-### Phase 3: Tokens & Delegation
-- [ ] Token display (Quinten)
-- [ ] Rewards catalog + spending
-- [ ] Chore delegation flow
+### Phase 3: Tokens & Rewards - ✅ Complete
+- [x] Token display and earning
+- [x] Rewards catalog + spending
+- [x] Reward claims management
 
-### Phase 4: Notifications
-- [ ] Web Push setup
-- [ ] Morning overview (07:30)
-- [ ] Incomplete nudge (17:15)
-- [ ] Event reminders
+### Phase 4: Database Persistence - ✅ Complete
+- [x] Full database sync
+- [x] Activity logging
+- [x] Real-time updates
 
-### Phase 5: Presence
-- [ ] Presence UI
-- [ ] Self-toggle interface
-- [ ] Presence-aware rotation
+### Phase 5: Gamification - ✅ Complete
+- [x] Toast notifications
+- [x] Reward store integration
+- [x] Token awarding system
 
-### Phase 6: Polish
-- [ ] Offline support
-- [ ] Animations
-- [ ] Linked chores UI
-- [ ] Edge cases
+### Phase 6: Smart Automation & Analytics - ✅ Complete
+- [x] Chore rotation automation
+- [x] Presence awareness (home/away)
+- [x] Family analytics dashboard
+- [x] Leaderboard (week/month/all-time)
+- [x] Personal & family stats
+- [x] Toast notifications for key events
 
 ## Contributing
 
