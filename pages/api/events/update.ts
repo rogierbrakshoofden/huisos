@@ -57,10 +57,10 @@ export default async function handler(
 
     updates.updated_at = new Date().toISOString()
 
-    // Update event
+    // Update event - cast updates to any to bypass Supabase type inference
     const { data: eventData, error: eventError } = await supabase
       .from('events')
-      .update(updates)
+      .update(updates as any)
       .eq('id', eventId)
       .select()
       .single()
