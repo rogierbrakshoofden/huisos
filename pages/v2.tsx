@@ -37,6 +37,7 @@ function V2DashboardContent() {
   const activeTab = state.activeTab
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [editingTask, setEditingTask] = useState<Task | null>(null)
+  const [apiError, setApiError] = useState<string | null>(null)
 
   const setActiveTab = (tab: 'work' | 'events' | 'log') => {
     dispatch({ type: 'SET_ACTIVE_TAB', payload: tab })
@@ -59,6 +60,7 @@ function V2DashboardContent() {
   const handleCloseModal = () => {
     setIsModalOpen(false)
     setEditingTask(null)
+    setApiError(null)
   }
 
   const handleSaveTask = async (taskData: Partial<Task>) => {
@@ -70,52 +72,101 @@ function V2DashboardContent() {
     if (!activeUserId) throw new Error('No active user')
 
     try {
+      setApiError(null)
+
       if (editingTask) {
-        // Update existing task (local state only, DB in Phase 4)
+        // Update existing task
+        const response = await fetch('/api/tasks/update', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            taskId: editingTask.id,
+            ...taskData,
+          }),
+        })
+
+        if (!response.ok) {
+          const error = await response.json()
+          throw new Error(error.error || 'Failed to update task')
+        }
+
+        const updatedTask = await response.json()
         dispatch({
           type: 'UPDATE_TASK',
-          payload: { ...editingTask, ...taskData } as Task,
+          payload: updatedTask as Task,
         })
       } else {
-        // Create new task - optimistic update
-        const newTask: Task = {
-          id: `temp-${Date.now()}`,
-          title: taskData.title || '',
-          description: taskData.description,
-          recurrence_type: (taskData.recurrence_type as any) || 'once',
-          frequency: taskData.frequency,
-          due_date: taskData.due_date,
-          assignee_ids: taskData.assignee_ids || [],
-          rotation_enabled: false,
-          rotation_index: 0,
-          rotation_exclude_ids: [],
-          completed: false,
-          completed_at: undefined,
-          completed_by: undefined,
-          completed_date: undefined,
-          token_value: taskData.token_value || 1,
-          notes: taskData.notes,
-          created_by: activeUserId,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
+        // Create new task
+        const response = await fetch('/api/tasks/create', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            ...taskData,
+            created_by: activeUserId,
+          }),
+        })
+
+        if (!response.ok) {
+          const error = await response.json()
+          throw new Error(error.error || 'Failed to create task')
         }
-        dispatch({ type: 'ADD_TASK', payload: newTask })
+
+        const newTask = await response.json()
+        dispatch({
+          type: 'ADD_TASK',
+          payload: newTask as Task,
+        })
       }
     } catch (err) {
+      const message = (err as Error).message
+      setApiError(message)
       dispatch({
         type: 'SET_SYNC_ERROR',
-        payload: `Failed to save task: ${(err as Error).message}`,
+        payload: `Failed to save task: ${message}`,
       })
       throw err
     }
   }
 
   const handleDeleteTask = async (taskId: string) => {
-    dispatch({ type: 'DELETE_TASK', payload: taskId })
+    const activeUserId =
+      state.activeUserId === 'everybody'
+        ? state.familyMembers[0]?.id
+        : (state.activeUserId as string)
+
+    try {
+      setApiError(null)
+
+      const response = await fetch('/api/tasks/delete', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          taskId,
+          actorId: activeUserId,
+        }),
+      })
+
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.error || 'Failed to delete task')
+      }
+
+      dispatch({ type: 'DELETE_TASK', payload: taskId })
+    } catch (err) {
+      const message = (err as Error).message
+      setApiError(message)
+      dispatch({
+        type: 'SET_SYNC_ERROR',
+        payload: `Failed to delete task: ${message}`,
+      })
+      throw err
+    }
   }
 
-  const handleCompleteTask = (taskId: string) => {
+  const handleCompleteTask = async (taskId: string) => {
     try {
+      setApiError(null)
+
       const activeUserId =
         state.activeUserId === 'everybody'
           ? state.familyMembers[0]?.id
@@ -123,17 +174,21 @@ function V2DashboardContent() {
 
       if (!activeUserId) throw new Error('No active user')
 
-      const task = state.tasks.find(t => t.id === taskId)
-      if (!task) throw new Error('Task not found')
+      const response = await fetch('/api/tasks/complete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          taskId,
+          completedBy: activeUserId,
+        }),
+      })
 
-      const completedTask = {
-        ...task,
-        completed: true,
-        completed_at: new Date().toISOString(),
-        completed_by: activeUserId,
-        completed_date: new Date().toISOString().split('T')[0],
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.error || 'Failed to complete task')
       }
 
+      const completedTask = await response.json()
       dispatch({
         type: 'UPDATE_TASK',
         payload: completedTask as Task,
@@ -146,9 +201,11 @@ function V2DashboardContent() {
       })
     } catch (err) {
       console.error('Failed to complete task:', err)
+      const message = (err as Error).message
+      setApiError(message)
       dispatch({
         type: 'SET_SYNC_ERROR',
-        payload: `Failed: ${(err as Error).message}`,
+        payload: `Failed: ${message}`,
       })
     }
   }
@@ -178,10 +235,10 @@ function V2DashboardContent() {
 
       <AddButton onTaskClick={handleOpenNewTask} onEventClick={() => {}} />
 
-      {syncError && (
+      {(syncError || apiError) && (
         <div className="fixed top-20 left-0 right-0 mx-auto max-w-sm z-40 m-4">
           <div className="bg-red-900/80 border border-red-700 text-red-100 px-4 py-2 rounded-lg text-sm backdrop-blur-sm">
-            {syncError}
+            {apiError || syncError}
           </div>
         </div>
       )}
@@ -315,10 +372,15 @@ function V2DashboardContent() {
         onClose={handleCloseModal}
         onSave={handleSaveTask}
         onDelete={handleDeleteTask}
+        currentUserId={
+          state.activeUserId === 'everybody'
+            ? state.familyMembers[0]?.id
+            : (state.activeUserId as string)
+        }
       />
 
       <div className="fixed bottom-32 left-4 text-xs text-slate-600 pointer-events-none">
-        <p>Phase 3: Modal UI ✓</p>
+        <p>Phase 4: DB Persistence ✓</p>
         <p>Realtime sync: {isOnline ? '🟢' : '🔴'}</p>
       </div>
     </div>
