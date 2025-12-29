@@ -77,13 +77,16 @@ export default async function handler(
 
     updates.updated_at = new Date().toISOString()
 
-    // Update task - cast supabase to any to bypass type checking
-    const { data: task, error: taskError } = await (supabase as any)
+    // Update task - cast entire result to any
+    const result: any = await (supabase as any)
       .from('tasks')
       .update(updates)
       .eq('id', taskId)
       .select()
       .single()
+
+    const task = result.data
+    const taskError = result.error
 
     if (taskError || !task) {
       console.error('Task update error:', taskError)
