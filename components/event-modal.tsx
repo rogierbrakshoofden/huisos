@@ -89,7 +89,7 @@ export function EventModal({
         datetime: datetime || undefined,
         all_day: allDay,
         member_ids: memberIds,
-        recurring: recurring || undefined,
+        recurring: (recurring as any) || null,
         notes: notes.trim() || undefined,
       })
       onClose()
