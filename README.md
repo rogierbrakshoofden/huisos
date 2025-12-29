@@ -6,6 +6,7 @@ A household management system for the family. Track chores, tasks, events, and p
 
 - 🏠 **Chores**: Rotating household tasks with automatic assignment
 - ✅ **Tasks**: One-off to-dos with assignees and due dates
+- 🎯 **Subtasks**: Break tasks into smaller steps with progress tracking
 - 📅 **Events**: Family calendar with reminders
 - 👥 **Presence**: Track who's home (morning/afternoon/evening)
 - 🎮 **Tokens**: Gamification system for Quinten
@@ -153,6 +154,14 @@ huisos/
 - [x] Leaderboard (week/month/all-time)
 - [x] Personal & family stats
 - [x] Toast notifications for key events
+
+### Phase 7: Subtasks & Progress - ✅ Complete
+- [x] Subtask CRUD (create, edit, delete, complete)
+- [x] Progress pie visualization
+- [x] Subtask reordering with drag handles
+- [x] Real-time sync across devices
+- [x] Activity logging for all subtask actions
+- [x] TaskListItem integration with progress display
 
 ## Contributing
 
