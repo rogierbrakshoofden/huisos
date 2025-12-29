@@ -46,16 +46,18 @@ export default async function handler(
     const completedAt = new Date().toISOString()
     const completedDate = completedAt.split('T')[0]
 
-    // Update task with completion info
-    const { data: updatedTask, error: updateError } = await supabase
+    // Update task with completion info - cast update payload to any
+    const updatePayload: any = {
+      completed: true,
+      completed_at: completedAt,
+      completed_by: completedBy,
+      completed_date: completedDate,
+      updated_at: completedAt,
+    }
+
+    const { data: updatedTask, error: updateError } = await (supabase as any)
       .from('tasks')
-      .update({
-        completed: true,
-        completed_at: completedAt,
-        completed_by: completedBy,
-        completed_date: completedDate,
-        updated_at: completedAt,
-      })
+      .update(updatePayload)
       .eq('id', taskId)
       .select()
       .single()
@@ -74,7 +76,7 @@ export default async function handler(
           amount: task.token_value,
           reason: `Task completion: ${task.title}`,
           task_completion_id: taskId,
-        })
+        } as any)
         .select()
         .single()
 
@@ -94,7 +96,7 @@ export default async function handler(
         title: task.title,
         token_value_awarded: task.token_value || 0,
       },
-    })
+    } as any)
 
     return res.status(200).json(updatedTask as Task)
   } catch (err) {
