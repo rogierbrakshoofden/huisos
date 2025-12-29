@@ -13,6 +13,7 @@ import { EventModal } from '@/components/event-modal'
 import { TokenWidget } from '@/components/token-widget'
 import { RewardStoreModal } from '@/components/reward-store-modal'
 import { MyRewardsTab } from '@/components/my-rewards-tab'
+import { StatsTab } from '@/components/stats-tab'
 import { Task, Event } from '@/types/huisos-v2'
 import confetti from 'canvas-confetti'
 
@@ -47,8 +48,59 @@ function V2DashboardContent() {
   const [editingTask, setEditingTask] = useState<Task | null>(null)
   const [editingEvent, setEditingEvent] = useState<Event | null>(null)
   const [apiError, setApiError] = useState<string | null>(null)
+  const [presence, setPresence] = useState<Record<string, { is_home: boolean; note?: string }>>({})
 
-  const setActiveTab = (tab: 'work' | 'events' | 'log' | 'rewards') => {
+  // Presence tracking: update on mount & every 30s
+  useEffect(() => {
+    const activeUserId =
+      state.activeUserId === 'everybody'
+        ? state.familyMembers[0]?.id
+        : (state.activeUserId as string)
+
+    if (!activeUserId) return
+
+    const updatePresence = async () => {
+      try {
+        await fetch('/api/presence/update', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            memberId: activeUserId,
+            isHome: true,
+          }),
+        })
+      } catch (err) {
+        console.warn('Presence update failed:', err)
+      }
+    }
+
+    // Update immediately on mount
+    updatePresence()
+
+    // Then every 30 seconds (heartbeat)
+    const interval = setInterval(updatePresence, 30000)
+
+    // On page unload, set to away
+    const handleUnload = () => {
+      fetch('/api/presence/update', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          memberId: activeUserId,
+          isHome: false,
+        }),
+      }).catch(() => {})
+    }
+
+    window.addEventListener('beforeunload', handleUnload)
+
+    return () => {
+      clearInterval(interval)
+      window.removeEventListener('beforeunload', handleUnload)
+    }
+  }, [state.activeUserId, state.familyMembers])
+
+  const setActiveTab = (tab: 'work' | 'events' | 'stats' | 'log' | 'rewards') => {
     dispatch({ type: 'SET_ACTIVE_TAB', payload: tab })
   }
 
@@ -330,7 +382,7 @@ function V2DashboardContent() {
         payload: completedTask as Task,
       })
 
-      toast('🎉 Task completed! Tokens earned!', 'success')
+      toast('✨ Chore completed! Tokens earned! Next rotation: ', 'success')
 
       confetti({
         particleCount: 100,
@@ -485,6 +537,11 @@ function V2DashboardContent() {
     (c) => c.status === 'pending'
   ).length
 
+  const currentUserId =
+    state.activeUserId === 'everybody'
+      ? state.familyMembers[0]?.id || ''
+      : (state.activeUserId as string)
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 pb-32">
       <UserSwitcher
@@ -551,11 +608,7 @@ function V2DashboardContent() {
                     onComplete={handleCompleteTask}
                     onEdit={handleEditTask}
                     onDelete={handleDeleteTask}
-                    currentUserId={
-                      state.activeUserId === 'everybody'
-                        ? undefined
-                        : (state.activeUserId as string)
-                    }
+                    currentUserId={currentUserId}
                   />
                 ))}
               </div>
@@ -598,16 +651,20 @@ function V2DashboardContent() {
           </div>
         )}
 
+        {activeTab === 'stats' && (
+          <StatsTab
+            familyMembers={state.familyMembers}
+            currentUserId={currentUserId}
+            presence={presence}
+          />
+        )}
+
         {activeTab === 'rewards' && (
           <MyRewardsTab
             rewardClaims={state.rewardClaims}
             rewards={state.rewards}
             familyMembers={state.familyMembers}
-            currentUserId={
-              state.activeUserId === 'everybody'
-                ? state.familyMembers[0]?.id || ''
-                : (state.activeUserId as string)
-            }
+            currentUserId={currentUserId}
             isParent={['rogier', 'anne'].includes(state.activeUserId as string)}
             onApprove={handleApproveRewardClaim}
             onClaim={handleClaimReward}
@@ -670,11 +727,7 @@ function V2DashboardContent() {
         onClose={handleCloseTaskModal}
         onSave={handleSaveTask}
         onDelete={handleDeleteTask}
-        currentUserId={
-          state.activeUserId === 'everybody'
-            ? state.familyMembers[0]?.id
-            : (state.activeUserId as string)
-        }
+        currentUserId={currentUserId}
       />
 
       <EventModal
@@ -694,11 +747,7 @@ function V2DashboardContent() {
         tokens={Object.fromEntries(
           state.familyMembers.map((m) => [m.id, getTokenBalance(m.id)])
         )}
-        currentUserId={
-          state.activeUserId === 'everybody'
-            ? state.familyMembers[0]?.id || ''
-            : (state.activeUserId as string)
-        }
+        currentUserId={currentUserId}
         onRedeem={handleRedeemReward}
       />
 
@@ -708,7 +757,7 @@ function V2DashboardContent() {
       />
 
       <div className="fixed bottom-32 left-4 text-xs text-slate-600 pointer-events-none">
-        <p>Phase 5: Tokens & Rewards ✓</p>
+        <p>Phase 6: Automation & Analytics 🚀</p>
         <p>Realtime sync: {isOnline ? '🟢' : '🔴'}</p>
       </div>
     </div>
