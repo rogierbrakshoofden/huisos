@@ -1,1 +1,155 @@
-import { useEffect, useRef, useCallback } from 'react'\nimport { supabase } from '@/lib/supabase'\nimport { useApp } from '@/lib/context-v2'\nimport { Task, Event, ActivityLogEntry } from '@/types/huisos-v2'\n\nconst POLL_INTERVAL = 30000\nconst ACTIVITY_LOG_LIMIT = 100\n\nexport function useRealtimeSync() {\n  const { state, dispatch } = useApp()\n  const unsubscribesRef = useRef<Array<() => void>>([])\n  const pollIntervalRef = useRef<NodeJS.Timeout | null>(null)\n  const initialLoadDone = useRef(false)\n\n  const fetchTasks = useCallback(async () => {\n    try {\n      const { data, error } = await supabase\n        .from('tasks')\n        .select('*')\n        .order('created_at', { ascending: false })\n      if (error) throw error\n      dispatch({ type: 'SET_TASKS', payload: data || [] })\n    } catch (err) {\n      console.error('Failed to fetch tasks:', err)\n      dispatch({\n        type: 'SET_SYNC_ERROR',\n        payload: `Failed to sync tasks: ${(err as Error).message}`,\n      })\n    }\n  }, [dispatch])\n\n  const fetchEvents = useCallback(async () => {\n    try {\n      const { data, error } = await supabase\n        .from('events')\n        .select('*')\n        .order('datetime', { ascending: true })\n      if (error) throw error\n      dispatch({ type: 'SET_EVENTS', payload: data || [] })\n    } catch (err) {\n      console.error('Failed to fetch events:', err)\n    }\n  }, [dispatch])\n\n  const fetchActivityLog = useCallback(async (limit = ACTIVITY_LOG_LIMIT) => {\n    try {\n      const { data, error } = await supabase\n        .from('activity_log')\n        .select('*, actor:family_members(*)')\n        .order('created_at', { ascending: false })\n        .limit(limit)\n      if (error) throw error\n      dispatch({ type: 'SET_ACTIVITY_LOG', payload: data || [] })\n    } catch (err) {\n      console.error('Failed to fetch activity log:', err)\n    }\n  }, [dispatch])\n\n  const fetchFamilyMembers = useCallback(async () => {\n    try {\n      const { data, error } = await supabase\n        .from('family_members')\n        .select('*')\n        .order('name', { ascending: true })\n      if (error) throw error\n      dispatch({ type: 'SET_FAMILY_MEMBERS', payload: data || [] })\n    } catch (err) {\n      console.error('Failed to fetch family members:', err)\n    }\n  }, [dispatch])\n\n  const loadInitialData = useCallback(async () => {\n    if (initialLoadDone.current) return\n    initialLoadDone.current = true\n\n    dispatch({ type: 'SET_LOADING', payload: true })\n    try {\n      await Promise.all([\n        fetchFamilyMembers(),\n        fetchTasks(),\n        fetchEvents(),\n        fetchActivityLog(),\n      ])\n      dispatch({ type: 'SET_LAST_SYNCED', payload: new Date() })\n      dispatch({ type: 'SET_SYNC_ERROR', payload: undefined })\n    } catch (err) {\n      console.error('Failed to load initial data:', err)\n    } finally {\n      dispatch({ type: 'SET_LOADING', payload: false })\n    }\n  }, [dispatch, fetchFamilyMembers, fetchTasks, fetchEvents, fetchActivityLog])\n\n  const setupPolling = useCallback(() => {\n    if (pollIntervalRef.current) {\n      clearInterval(pollIntervalRef.current)\n    }\n    pollIntervalRef.current = setInterval(async () => {\n      if (!state.isOnline) return\n      try {\n        console.log('Polling for updates...')\n        if (state.lastSyncedAt) {\n          const lastSynced = new Date(state.lastSyncedAt).toISOString()\n          const { data: newTasks } = await supabase\n            .from('tasks')\n            .select('*')\n            .gt('updated_at', lastSynced)\n          if (newTasks && newTasks.length > 0) {\n            const taskMap = new Map(state.tasks.map(t => [t.id, t]))\n            newTasks.forEach(task => taskMap.set(task.id, task))\n            dispatch({ type: 'SET_TASKS', payload: Array.from(taskMap.values()) })\n          }\n        }\n      } catch (err) {\n        console.error('Polling failed:', err)\n      } finally {\n        dispatch({ type: 'SET_LAST_SYNCED', payload: new Date() })\n      }\n    }, POLL_INTERVAL)\n  }, [state.isOnline, state.lastSyncedAt, state.tasks, dispatch])\n\n  useEffect(() => {\n    loadInitialData()\n    setupPolling()\n    return () => {\n      if (pollIntervalRef.current) {\n        clearInterval(pollIntervalRef.current)\n      }\n    }\n  }, [])\n\n  const refresh = useCallback(async () => {\n    dispatch({ type: 'SET_LOADING', payload: true })\n    try {\n      await Promise.all([fetchTasks(), fetchEvents(), fetchActivityLog()])\n      dispatch({ type: 'SET_LAST_SYNCED', payload: new Date() })\n      dispatch({ type: 'SET_SYNC_ERROR', payload: undefined })\n    } catch (err) {\n      console.error('Manual refresh failed:', err)\n      dispatch({\n        type: 'SET_SYNC_ERROR',\n        payload: `Refresh failed: ${(err as Error).message}`,\n      })\n    } finally {\n      dispatch({ type: 'SET_LOADING', payload: false })\n    }\n  }, [dispatch, fetchTasks, fetchEvents, fetchActivityLog])\n\n  return {\n    isLoading: state.isLoading,\n    isOnline: state.isOnline,\n    syncError: state.syncError,\n    lastSyncedAt: state.lastSyncedAt,\n    refresh,\n  }\n}\n"
+import { useEffect, useRef, useCallback } from 'react'
+import { supabase } from '@/lib/supabase'
+import { useApp } from '@/lib/context-v2'
+import type { Task, Event, ActivityLogEntry } from '@/types/huisos-v2'
+
+const POLL_INTERVAL = 30000
+const ACTIVITY_LOG_LIMIT = 100
+
+export function useRealtimeSync() {
+  const { state, dispatch } = useApp()
+  const unsubscribesRef = useRef<Array<() => void>>([])
+  const pollIntervalRef = useRef<NodeJS.Timeout | null>(null)
+  const initialLoadDone = useRef(false)
+
+  const fetchTasks = useCallback(async () => {
+    try {
+      const { data, error } = await supabase
+        .from('tasks')
+        .select('*')
+        .order('created_at', { ascending: false })
+      if (error) throw error
+      dispatch({ type: 'SET_TASKS', payload: data || [] })
+    } catch (err) {
+      console.error('Failed to fetch tasks:', err)
+      dispatch({
+        type: 'SET_SYNC_ERROR',
+        payload: `Failed to sync tasks: ${(err as Error).message}`,
+      })
+    }
+  }, [dispatch])
+
+  const fetchEvents = useCallback(async () => {
+    try {
+      const { data, error } = await supabase
+        .from('events')
+        .select('*')
+        .order('datetime', { ascending: true })
+      if (error) throw error
+      dispatch({ type: 'SET_EVENTS', payload: data || [] })
+    } catch (err) {
+      console.error('Failed to fetch events:', err)
+    }
+  }, [dispatch])
+
+  const fetchActivityLog = useCallback(async (limit = ACTIVITY_LOG_LIMIT) => {
+    try {
+      const { data, error } = await supabase
+        .from('activity_log')
+        .select('*, actor:family_members(*)')
+        .order('created_at', { ascending: false })
+        .limit(limit)
+      if (error) throw error
+      dispatch({ type: 'SET_ACTIVITY_LOG', payload: data || [] })
+    } catch (err) {
+      console.error('Failed to fetch activity log:', err)
+    }
+  }, [dispatch])
+
+  const fetchFamilyMembers = useCallback(async () => {
+    try {
+      const { data, error } = await supabase
+        .from('family_members')
+        .select('*')
+        .order('name', { ascending: true })
+      if (error) throw error
+      dispatch({ type: 'SET_FAMILY_MEMBERS', payload: data || [] })
+    } catch (err) {
+      console.error('Failed to fetch family members:', err)
+    }
+  }, [dispatch])
+
+  const loadInitialData = useCallback(async () => {
+    if (initialLoadDone.current) return
+    initialLoadDone.current = true
+
+    dispatch({ type: 'SET_LOADING', payload: true })
+    try {
+      await Promise.all([
+        fetchFamilyMembers(),
+        fetchTasks(),
+        fetchEvents(),
+        fetchActivityLog(),
+      ])
+      dispatch({ type: 'SET_LAST_SYNCED', payload: new Date() })
+      dispatch({ type: 'SET_SYNC_ERROR', payload: undefined })
+    } catch (err) {
+      console.error('Failed to load initial data:', err)
+    } finally {
+      dispatch({ type: 'SET_LOADING', payload: false })
+    }
+  }, [dispatch, fetchFamilyMembers, fetchTasks, fetchEvents, fetchActivityLog])
+
+  const setupPolling = useCallback(() => {
+    if (pollIntervalRef.current) {
+      clearInterval(pollIntervalRef.current)
+    }
+    pollIntervalRef.current = setInterval(async () => {
+      if (!state.isOnline) return
+      try {
+        console.log('Polling for updates...')
+        if (state.lastSyncedAt) {
+          const lastSynced = new Date(state.lastSyncedAt).toISOString()
+          const { data: newTasks } = await supabase
+            .from('tasks')
+            .select('*')
+            .gt('updated_at', lastSynced)
+          if (newTasks && newTasks.length > 0) {
+            const taskMap = new Map(state.tasks.map(t => [t.id, t]))
+            newTasks.forEach(task => taskMap.set(task.id, task))
+            dispatch({ type: 'SET_TASKS', payload: Array.from(taskMap.values()) })
+          }
+        }
+      } catch (err) {
+        console.error('Polling failed:', err)
+      } finally {
+        dispatch({ type: 'SET_LAST_SYNCED', payload: new Date() })
+      }
+    }, POLL_INTERVAL)
+  }, [state.isOnline, state.lastSyncedAt, state.tasks, dispatch])
+
+  useEffect(() => {
+    loadInitialData()
+    setupPolling()
+    return () => {
+      if (pollIntervalRef.current) {
+        clearInterval(pollIntervalRef.current)
+      }
+    }
+  }, [])
+
+  const refresh = useCallback(async () => {
+    dispatch({ type: 'SET_LOADING', payload: true })
+    try {
+      await Promise.all([fetchTasks(), fetchEvents(), fetchActivityLog()])
+      dispatch({ type: 'SET_LAST_SYNCED', payload: new Date() })
+      dispatch({ type: 'SET_SYNC_ERROR', payload: undefined })
+    } catch (err) {
+      console.error('Manual refresh failed:', err)
+      dispatch({
+        type: 'SET_SYNC_ERROR',
+        payload: `Refresh failed: ${(err as Error).message}`,
+      })
+    } finally {
+      dispatch({ type: 'SET_LOADING', payload: false })
+    }
+  }, [dispatch, fetchTasks, fetchEvents, fetchActivityLog])
+
+  return {
+    isLoading: state.isLoading,
+    isOnline: state.isOnline,
+    syncError: state.syncError,
+    lastSyncedAt: state.lastSyncedAt,
+    refresh,
+  }
+}
