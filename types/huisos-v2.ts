@@ -108,10 +108,23 @@ export interface Token {
 
 export interface Reward {
   id: string
-  name: string
-  cost: number
+  title: string
+  description?: string
+  icon_emoji: string
+  token_cost: number
   active: boolean
   created_at: string
+}
+
+export interface RewardClaim {
+  id: string
+  member_id: string
+  reward_id: string
+  status: 'pending' | 'approved' | 'claimed'
+  claimed_at?: string
+  redeemed_at: string
+  created_at: string
+  reward?: Reward
 }
 
 export interface Presence {
@@ -134,8 +147,9 @@ export interface AppState {
   activityLog: ActivityLogEntry[]
   tokens: Token[]
   rewards: Reward[]
+  rewardClaims: RewardClaim[]
   presence: Presence[]
-  activeTab: 'work' | 'events' | 'log'
+  activeTab: 'work' | 'events' | 'log' | 'rewards'
   modalOpen: 'task' | 'event' | null
   selectedTaskForEdit: Task | null
   editingTaskId?: string
