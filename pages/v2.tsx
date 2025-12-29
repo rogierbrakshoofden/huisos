@@ -9,6 +9,9 @@ import { AddButton } from '@/components/add-button'
 import { TaskListItem } from '@/components/task-list-item'
 import { TaskModal } from '@/components/task-modal'
 import { EventModal } from '@/components/event-modal'
+import { TokenWidget } from '@/components/token-widget'
+import { RewardStoreModal } from '@/components/reward-store-modal'
+import { MyRewardsTab } from '@/components/my-rewards-tab'
 import { Task, Event } from '@/types/huisos-v2'
 import confetti from 'canvas-confetti'
 
@@ -38,11 +41,12 @@ function V2DashboardContent() {
   const activeTab = state.activeTab
   const [isTaskModalOpen, setIsTaskModalOpen] = useState(false)
   const [isEventModalOpen, setIsEventModalOpen] = useState(false)
+  const [isRewardStoreOpen, setIsRewardStoreOpen] = useState(false)
   const [editingTask, setEditingTask] = useState<Task | null>(null)
   const [editingEvent, setEditingEvent] = useState<Event | null>(null)
   const [apiError, setApiError] = useState<string | null>(null)
 
-  const setActiveTab = (tab: 'work' | 'events' | 'log') => {
+  const setActiveTab = (tab: 'work' | 'events' | 'log' | 'rewards') => {
     dispatch({ type: 'SET_ACTIVE_TAB', payload: tab })
   }
 
@@ -330,6 +334,109 @@ function V2DashboardContent() {
     }
   }
 
+  // Phase 5: Rewards
+  const handleRedeemReward = async (rewardId: string) => {
+    const activeUserId =
+      state.activeUserId === 'everybody'
+        ? state.familyMembers[0]?.id
+        : (state.activeUserId as string)
+
+    if (!activeUserId) throw new Error('No active user')
+
+    try {
+      const response = await fetch('/api/rewards/redeem', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          rewardId,
+          memberId: activeUserId,
+        }),
+      })
+
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.error || 'Failed to redeem reward')
+      }
+
+      const claim = await response.json()
+      dispatch({
+        type: 'ADD_REWARD_CLAIM',
+        payload: claim.claim,
+      })
+
+      setIsRewardStoreOpen(false)
+      confetti({
+        particleCount: 50,
+        spread: 60,
+        origin: { y: 0.3 },
+      })
+    } catch (err) {
+      const message = (err as Error).message
+      setApiError(message)
+      throw err
+    }
+  }
+
+  const handleApproveRewardClaim = async (claimId: string) => {
+    try {
+      const response = await fetch('/api/rewards/update-claim', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          claimId,
+          status: 'approved',
+        }),
+      })
+
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.error || 'Failed to approve reward')
+      }
+
+      const claim = state.rewardClaims.find((c) => c.id === claimId)
+      if (claim) {
+        dispatch({
+          type: 'UPDATE_REWARD_CLAIM',
+          payload: { ...claim, status: 'approved' },
+        })
+      }
+    } catch (err) {
+      const message = (err as Error).message
+      setApiError(message)
+      throw err
+    }
+  }
+
+  const handleClaimReward = async (claimId: string) => {
+    try {
+      const response = await fetch('/api/rewards/update-claim', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          claimId,
+          status: 'claimed',
+        }),
+      })
+
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.error || 'Failed to claim reward')
+      }
+
+      const claim = state.rewardClaims.find((c) => c.id === claimId)
+      if (claim) {
+        dispatch({
+          type: 'UPDATE_REWARD_CLAIM',
+          payload: { ...claim, status: 'claimed', claimed_at: new Date().toISOString() },
+        })
+      }
+    } catch (err) {
+      const message = (err as Error).message
+      setApiError(message)
+      throw err
+    }
+  }
+
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950">
@@ -345,6 +452,16 @@ function V2DashboardContent() {
     return state.familyMembers.filter((m) => task.assignee_ids.includes(m.id))
   }
 
+  const getTokenBalance = (memberId: string) => {
+    return state.tokens
+      .filter((t) => t.member_id === memberId)
+      .reduce((sum, t) => sum + t.amount, 0)
+  }
+
+  const pendingClaimsCount = state.rewardClaims.filter(
+    (c) => c.status === 'pending'
+  ).length
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 pb-32">
       <UserSwitcher
@@ -353,7 +470,10 @@ function V2DashboardContent() {
         onUserChange={switchUser}
       />
 
-      <AddButton onTaskClick={handleOpenNewTask} onEventClick={handleOpenNewEvent} />
+      <AddButton
+        onTaskClick={handleOpenNewTask}
+        onEventClick={handleOpenNewEvent}
+      />
 
       {(syncError || apiError) && (
         <div className="fixed top-20 left-0 right-0 mx-auto max-w-sm z-40 m-4">
@@ -378,6 +498,16 @@ function V2DashboardContent() {
 
         {activeTab === 'work' && (
           <div className="space-y-4">
+            <TokenWidget
+              familyMembers={state.familyMembers}
+              tokens={state.tokens}
+            />
+            <button
+              onClick={() => setIsRewardStoreOpen(true)}
+              className="w-full px-4 py-3 rounded-lg bg-amber-600/20 border border-amber-600/50 text-amber-300 hover:bg-amber-600/30 transition-colors mb-4 text-sm font-medium"
+            >
+              🎁 Visit Reward Store
+            </button>
             {tasks.length === 0 ? (
               <div className="text-center py-12">
                 <p className="text-slate-400 mb-4">No tasks</p>
@@ -430,7 +560,9 @@ function V2DashboardContent() {
                     className="bg-slate-800/60 border border-slate-700/50 rounded-lg p-4 hover:bg-slate-800/80 transition-all duration-200 cursor-pointer"
                     onClick={() => handleEditEvent(event)}
                   >
-                    <div className="font-medium text-white mb-1">{event.title}</div>
+                    <div className="font-medium text-white mb-1">
+                      {event.title}
+                    </div>
                     <div className="text-sm text-slate-400">
                       {event.all_day
                         ? new Date(event.datetime || '').toLocaleDateString()
@@ -441,6 +573,22 @@ function V2DashboardContent() {
               </div>
             )}
           </div>
+        )}
+
+        {activeTab === 'rewards' && (
+          <MyRewardsTab
+            rewardClaims={state.rewardClaims}
+            rewards={state.rewards}
+            familyMembers={state.familyMembers}
+            currentUserId={
+              state.activeUserId === 'everybody'
+                ? state.familyMembers[0]?.id || ''
+                : (state.activeUserId as string)
+            }
+            isParent={['rogier', 'anne'].includes(state.activeUserId as string)}
+            onApprove={handleApproveRewardClaim}
+            onClaim={handleClaimReward}
+          />
         )}
 
         {activeTab === 'log' && (
@@ -462,7 +610,9 @@ function V2DashboardContent() {
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="text-sm text-white">
-                          <span className="font-medium">{entry.actor?.name || 'Unknown'}</span>
+                          <span className="font-medium">
+                            {entry.actor?.name || 'Unknown'}
+                          </span>
                           {' '}
                           <span className="text-slate-400">
                             {entry.action_type.replace(/_/g, ' ')}
@@ -487,6 +637,7 @@ function V2DashboardContent() {
         workCount={tasks.length}
         eventsCount={events.length}
         logCount={state.activityLog.length}
+        rewardsCount={pendingClaimsCount}
       />
 
       <TaskModal
@@ -512,8 +663,24 @@ function V2DashboardContent() {
         onDelete={handleDeleteEvent}
       />
 
+      <RewardStoreModal
+        isOpen={isRewardStoreOpen}
+        onClose={() => setIsRewardStoreOpen(false)}
+        rewards={state.rewards}
+        familyMembers={state.familyMembers}
+        tokens={Object.fromEntries(
+          state.familyMembers.map((m) => [m.id, getTokenBalance(m.id)])
+        )}
+        currentUserId={
+          state.activeUserId === 'everybody'
+            ? state.familyMembers[0]?.id || ''
+            : (state.activeUserId as string)
+        }
+        onRedeem={handleRedeemReward}
+      />
+
       <div className="fixed bottom-32 left-4 text-xs text-slate-600 pointer-events-none">
-        <p>Phase 4: DB Persistence + Events ✓</p>
+        <p>Phase 5: Tokens & Rewards ✓</p>
         <p>Realtime sync: {isOnline ? '🟢' : '🔴'}</p>
       </div>
     </div>
