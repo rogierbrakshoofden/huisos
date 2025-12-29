@@ -36,6 +36,31 @@ export function useRealtimeSync() {
         dispatch({ type: 'SET_TASKS', payload: tasks as any })
       }
 
+      // Load subtasks for all tasks
+      const { data: subtasks } = await supabase
+        .from('subtasks')
+        .select('*')
+        .order('parent_task_id')
+        .order('order_index', { ascending: true })
+      if (subtasks) {
+        // Group subtasks by parent_task_id
+        const subtasksByTask = new Map<string, any[]>()
+        subtasks.forEach((st) => {
+          const taskId = st.parent_task_id
+          if (!subtasksByTask.has(taskId)) {
+            subtasksByTask.set(taskId, [])
+          }
+          subtasksByTask.get(taskId)!.push(st)
+        })
+        // Dispatch each group
+        subtasksByTask.forEach((subs, taskId) => {
+          dispatch({
+            type: 'REORDER_SUBTASKS',
+            payload: { taskId, subtasks: subs },
+          })
+        })
+      }
+
       // Load events
       const { data: events } = await supabase
         .from('events')
@@ -111,6 +136,39 @@ export function useRealtimeSync() {
             }
           } catch (err) {
             console.error('Failed to refetch tasks:', err)
+          }
+        }
+      )
+      .subscribe()
+
+    // Subscribe to subtask changes
+    const subtasksSub = supabase
+      .channel('subtasks')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'subtasks',
+        },
+        async (payload) => {
+          try {
+            const { data: subtasks } = await supabase
+              .from('subtasks')
+              .select('*')
+              .eq('parent_task_id', (payload.new as any).parent_task_id || (payload.old as any).parent_task_id)
+              .order('order_index', { ascending: true })
+            if (subtasks) {
+              dispatch({
+                type: 'REORDER_SUBTASKS',
+                payload: {
+                  taskId: (payload.new as any).parent_task_id || (payload.old as any).parent_task_id,
+                  subtasks: subtasks as any,
+                },
+              })
+            }
+          } catch (err) {
+            console.error('Failed to refetch subtasks:', err)
           }
         }
       )
@@ -197,6 +255,7 @@ export function useRealtimeSync() {
 
     subscriptionsRef.current = [
       () => tasksSub.unsubscribe(),
+      () => subtasksSub.unsubscribe(),
       () => eventsSub.unsubscribe(),
       () => logSub.unsubscribe(),
       () => claimsSub.unsubscribe(),
