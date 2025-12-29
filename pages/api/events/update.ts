@@ -16,7 +16,7 @@ interface UpdateEventRequest {
   member_ids?: string[]
   recurring?: string | null
   notes?: string
-  [key: string]: any
+  actorId?: string
 }
 
 export default async function handler(
@@ -28,13 +28,13 @@ export default async function handler(
   }
 
   try {
-    const { eventId, ...updateData }: UpdateEventRequest = req.body
+    const { eventId, actorId, ...updateData }: UpdateEventRequest & { actorId?: string } = req.body
 
     if (!eventId) {
       return res.status(400).json({ error: 'eventId is required' })
     }
 
-    // Build update object - use type assertion
+    // Build update object
     const updates: any = {}
     if (updateData.title !== undefined) {
       updates.title = updateData.title?.trim() || ''
@@ -58,22 +58,23 @@ export default async function handler(
     updates.updated_at = new Date().toISOString()
 
     // Update event
-    const { data: event, error: eventError } = await supabase
+    const { data: eventData, error: eventError } = await supabase
       .from('events')
       .update(updates)
       .eq('id', eventId)
       .select()
       .single()
 
-    if (eventError || !event) {
+    if (eventError || !eventData) {
       console.error('Event update error:', eventError)
       return res.status(500).json({ error: 'Failed to update event' })
     }
 
+    const event = eventData as Event
+
     // Log activity
-    const actorId = updateData.actorId || 'system'
     await supabase.from('activity_log').insert({
-      actor_id: actorId,
+      actor_id: actorId || 'system',
       action_type: 'event_edited',
       entity_type: 'event',
       entity_id: event.id,
@@ -82,7 +83,7 @@ export default async function handler(
       },
     } as any)
 
-    return res.status(200).json(event as Event)
+    return res.status(200).json(event)
   } catch (err) {
     console.error('API error:', err)
     return res.status(500).json({ error: 'Internal server error' })
