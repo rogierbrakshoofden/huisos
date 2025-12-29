@@ -19,7 +19,7 @@ export function useRealtimeSync() {
         .select('*')
         .order('created_at', { ascending: false })
       if (error) throw error
-      dispatch({ type: 'SET_TASKS', payload: data || [] })
+      dispatch({ type: 'SET_TASKS', payload: (data as Task[]) || [] })
     } catch (err) {
       console.error('Failed to fetch tasks:', err)
       dispatch({
@@ -36,7 +36,7 @@ export function useRealtimeSync() {
         .select('*')
         .order('datetime', { ascending: true })
       if (error) throw error
-      dispatch({ type: 'SET_EVENTS', payload: data || [] })
+      dispatch({ type: 'SET_EVENTS', payload: (data as Event[]) || [] })
     } catch (err) {
       console.error('Failed to fetch events:', err)
     }
@@ -50,7 +50,7 @@ export function useRealtimeSync() {
         .order('created_at', { ascending: false })
         .limit(limit)
       if (error) throw error
-      dispatch({ type: 'SET_ACTIVITY_LOG', payload: data || [] })
+      dispatch({ type: 'SET_ACTIVITY_LOG', payload: (data as ActivityLogEntry[]) || [] })
     } catch (err) {
       console.error('Failed to fetch activity log:', err)
     }
@@ -63,7 +63,7 @@ export function useRealtimeSync() {
         .select('*')
         .order('name', { ascending: true })
       if (error) throw error
-      dispatch({ type: 'SET_FAMILY_MEMBERS', payload: data || [] })
+      dispatch({ type: 'SET_FAMILY_MEMBERS', payload: (data as any[]) || [] })
     } catch (err) {
       console.error('Failed to fetch family members:', err)
     }
@@ -104,9 +104,9 @@ export function useRealtimeSync() {
             .from('tasks')
             .select('*')
             .gt('updated_at', lastSynced)
-          if (newTasks && newTasks.length > 0) {
+          if (newTasks && (newTasks as Task[]).length > 0) {
             const taskMap = new Map(state.tasks.map(t => [t.id, t]))
-            newTasks.forEach(task => taskMap.set(task.id, task))
+            ;(newTasks as Task[]).forEach(task => taskMap.set(task.id, task))
             dispatch({ type: 'SET_TASKS', payload: Array.from(taskMap.values()) })
           }
         }
