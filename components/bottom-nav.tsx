@@ -1,10 +1,10 @@
 // components/bottom-nav.tsx
 import React from 'react'
-import { ListTodo, Calendar, Clock, Gift } from 'lucide-react'
+import { ListTodo, Calendar, Clock, Gift, BarChart3 } from 'lucide-react'
 
 interface BottomNavProps {
-  activeTab: 'work' | 'events' | 'log' | 'rewards'
-  onTabChange: (tab: 'work' | 'events' | 'log' | 'rewards') => void
+  activeTab: 'work' | 'events' | 'stats' | 'log' | 'rewards'
+  onTabChange: (tab: 'work' | 'events' | 'stats' | 'log' | 'rewards') => void
   workCount: number
   eventsCount: number
   logCount: number
@@ -22,6 +22,7 @@ export function BottomNav({
   const tabs = [
     { id: 'work' as const, label: 'Work', icon: ListTodo, count: workCount },
     { id: 'events' as const, label: 'Events', icon: Calendar, count: eventsCount },
+    { id: 'stats' as const, label: 'Stats', icon: BarChart3, count: 0 },
     { id: 'rewards' as const, label: 'Rewards', icon: Gift, count: rewardsCount },
     { id: 'log' as const, label: 'Log', icon: Clock, count: logCount },
   ]
