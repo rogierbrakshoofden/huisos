@@ -53,14 +53,14 @@ function V2DashboardContent() {
       if (!activeUserId) throw new Error('No active user')
 
       // Update task
-      const { data: task, error } = await supabase
+      const { data: task, error } = await (supabase
         .from('tasks')
         .update({
           completed: true,
           completed_at: new Date().toISOString(),
           completed_by: activeUserId,
           completed_date: new Date().toISOString().split('T')[0],
-        })
+        }) as any)
         .eq('id', taskId)
         .select()
         .single()
@@ -76,7 +76,7 @@ function V2DashboardContent() {
           amount: (task as any).token_value,
           reason: `Completed: ${(task as any).title}`,
           task_completion_id: taskId,
-        })
+        } as any)
       }
 
       // Log activity
@@ -86,7 +86,7 @@ function V2DashboardContent() {
         entity_type: 'task',
         entity_id: taskId,
         metadata: { title: (task as any).title, token_value: (task as any).token_value },
-      })
+      } as any)
 
       confetti({
         particleCount: 100,
