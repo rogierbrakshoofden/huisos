@@ -441,7 +441,10 @@ function V2DashboardContent() {
         const updatedSubtask = await response.json()
         dispatch({
           type: 'UPDATE_SUBTASK',
-          payload: updatedSubtask as Subtask,
+          payload: {
+            taskId: targetSubtask.parent_task_id,
+            subtask: updatedSubtask as Subtask,
+          },
         })
         toast('✓ Subtask completed', 'success')
       }
