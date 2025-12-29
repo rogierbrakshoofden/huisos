@@ -1,73 +1,13 @@
 import { useEffect, useRef, useCallback } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useApp } from '@/lib/context-v2'
-import type { Task, Event, ActivityLogEntry } from '@/types/huisos-v2'
 
 const POLL_INTERVAL = 30000
-const ACTIVITY_LOG_LIMIT = 100
 
 export function useRealtimeSync() {
   const { state, dispatch } = useApp()
-  const unsubscribesRef = useRef<Array<() => void>>([])
   const pollIntervalRef = useRef<NodeJS.Timeout | null>(null)
   const initialLoadDone = useRef(false)
-
-  const fetchTasks = useCallback(async () => {
-    try {
-      const { data, error } = await supabase
-        .from('tasks')
-        .select('*')
-        .order('created_at', { ascending: false })
-      if (error) throw error
-      dispatch({ type: 'SET_TASKS', payload: (data as Task[]) || [] })
-    } catch (err) {
-      console.error('Failed to fetch tasks:', err)
-      dispatch({
-        type: 'SET_SYNC_ERROR',
-        payload: `Failed to sync tasks: ${(err as Error).message}`,
-      })
-    }
-  }, [dispatch])
-
-  const fetchEvents = useCallback(async () => {
-    try {
-      const { data, error } = await supabase
-        .from('events')
-        .select('*')
-        .order('datetime', { ascending: true })
-      if (error) throw error
-      dispatch({ type: 'SET_EVENTS', payload: (data as Event[]) || [] })
-    } catch (err) {
-      console.error('Failed to fetch events:', err)
-    }
-  }, [dispatch])
-
-  const fetchActivityLog = useCallback(async (limit = ACTIVITY_LOG_LIMIT) => {
-    try {
-      const { data, error } = await supabase
-        .from('activity_log')
-        .select('*, actor:family_members(*)')
-        .order('created_at', { ascending: false })
-        .limit(limit)
-      if (error) throw error
-      dispatch({ type: 'SET_ACTIVITY_LOG', payload: (data as ActivityLogEntry[]) || [] })
-    } catch (err) {
-      console.error('Failed to fetch activity log:', err)
-    }
-  }, [dispatch])
-
-  const fetchFamilyMembers = useCallback(async () => {
-    try {
-      const { data, error } = await supabase
-        .from('family_members')
-        .select('*')
-        .order('name', { ascending: true })
-      if (error) throw error
-      dispatch({ type: 'SET_FAMILY_MEMBERS', payload: (data as any[]) || [] })
-    } catch (err) {
-      console.error('Failed to fetch family members:', err)
-    }
-  }, [dispatch])
 
   const loadInitialData = useCallback(async () => {
     if (initialLoadDone.current) return
@@ -75,20 +15,55 @@ export function useRealtimeSync() {
 
     dispatch({ type: 'SET_LOADING', payload: true })
     try {
-      await Promise.all([
-        fetchFamilyMembers(),
-        fetchTasks(),
-        fetchEvents(),
-        fetchActivityLog(),
-      ])
+      // Fetch family members
+      const { data: members } = await supabase
+        .from('family_members')
+        .select('*')
+        .order('name', { ascending: true })
+      if (members) {
+        dispatch({ type: 'SET_FAMILY_MEMBERS', payload: members as any })
+      }
+
+      // Fetch tasks
+      const { data: tasks } = await supabase
+        .from('tasks')
+        .select('*')
+        .order('created_at', { ascending: false })
+      if (tasks) {
+        dispatch({ type: 'SET_TASKS', payload: tasks as any })
+      }
+
+      // Fetch events
+      const { data: events } = await supabase
+        .from('events')
+        .select('*')
+        .order('datetime', { ascending: true })
+      if (events) {
+        dispatch({ type: 'SET_EVENTS', payload: events as any })
+      }
+
+      // Fetch activity log
+      const { data: activityLog } = await supabase
+        .from('activity_log')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(100)
+      if (activityLog) {
+        dispatch({ type: 'SET_ACTIVITY_LOG', payload: activityLog as any })
+      }
+
       dispatch({ type: 'SET_LAST_SYNCED', payload: new Date() })
       dispatch({ type: 'SET_SYNC_ERROR', payload: undefined })
     } catch (err) {
       console.error('Failed to load initial data:', err)
+      dispatch({
+        type: 'SET_SYNC_ERROR',
+        payload: `Failed to load data: ${(err as Error).message}`,
+      })
     } finally {
       dispatch({ type: 'SET_LOADING', payload: false })
     }
-  }, [dispatch, fetchFamilyMembers, fetchTasks, fetchEvents, fetchActivityLog])
+  }, [dispatch])
 
   const setupPolling = useCallback(() => {
     if (pollIntervalRef.current) {
@@ -97,26 +72,18 @@ export function useRealtimeSync() {
     pollIntervalRef.current = setInterval(async () => {
       if (!state.isOnline) return
       try {
-        console.log('Polling for updates...')
-        if (state.lastSyncedAt) {
-          const lastSynced = new Date(state.lastSyncedAt).toISOString()
-          const { data: newTasks } = await supabase
-            .from('tasks')
-            .select('*')
-            .gt('updated_at', lastSynced)
-          if (newTasks && (newTasks as Task[]).length > 0) {
-            const taskMap = new Map(state.tasks.map(t => [t.id, t]))
-            ;(newTasks as Task[]).forEach(task => taskMap.set(task.id, task))
-            dispatch({ type: 'SET_TASKS', payload: Array.from(taskMap.values()) })
-          }
+        const { data: tasks } = await supabase
+          .from('tasks')
+          .select('*')
+          .order('created_at', { ascending: false })
+        if (tasks) {
+          dispatch({ type: 'SET_TASKS', payload: tasks as any })
         }
       } catch (err) {
         console.error('Polling failed:', err)
-      } finally {
-        dispatch({ type: 'SET_LAST_SYNCED', payload: new Date() })
       }
     }, POLL_INTERVAL)
-  }, [state.isOnline, state.lastSyncedAt, state.tasks, dispatch])
+  }, [state.isOnline, dispatch])
 
   useEffect(() => {
     loadInitialData()
@@ -128,28 +95,10 @@ export function useRealtimeSync() {
     }
   }, [])
 
-  const refresh = useCallback(async () => {
-    dispatch({ type: 'SET_LOADING', payload: true })
-    try {
-      await Promise.all([fetchTasks(), fetchEvents(), fetchActivityLog()])
-      dispatch({ type: 'SET_LAST_SYNCED', payload: new Date() })
-      dispatch({ type: 'SET_SYNC_ERROR', payload: undefined })
-    } catch (err) {
-      console.error('Manual refresh failed:', err)
-      dispatch({
-        type: 'SET_SYNC_ERROR',
-        payload: `Refresh failed: ${(err as Error).message}`,
-      })
-    } finally {
-      dispatch({ type: 'SET_LOADING', payload: false })
-    }
-  }, [dispatch, fetchTasks, fetchEvents, fetchActivityLog])
-
   return {
     isLoading: state.isLoading,
     isOnline: state.isOnline,
     syncError: state.syncError,
     lastSyncedAt: state.lastSyncedAt,
-    refresh,
   }
 }
