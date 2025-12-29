@@ -41,7 +41,7 @@ export default async function handler(
         entity_type: 'event',
         entity_id: eventId,
         metadata: {},
-      })
+      } as any)
     }
 
     return res.status(200).json({ success: true })
