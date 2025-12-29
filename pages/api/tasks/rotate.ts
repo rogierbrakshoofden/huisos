@@ -83,7 +83,7 @@ export default async function handler(
     }
 
     // Update parent task's rotation_index
-    await supabase
+    await (supabase as any)
       .from('tasks')
       .update({ rotation_index: nextIndex })
       .eq('id', taskId)
@@ -98,7 +98,7 @@ export default async function handler(
     const nextAssigneeName = memberResult.data?.name || 'Next member'
 
     // Log activity
-    await supabase.from('activity_log').insert({
+    await (supabase as any).from('activity_log').insert({
       actor_id: completedBy,
       action_type: 'task_rotated',
       entity_type: 'task',
@@ -109,7 +109,7 @@ export default async function handler(
         to_index: nextIndex,
         assigned_to: nextAssigneeName,
       },
-    } as any)
+    })
 
     return res.status(200).json(newTask)
   } catch (err) {
