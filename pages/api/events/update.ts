@@ -34,25 +34,22 @@ export default async function handler(
       return res.status(400).json({ error: 'eventId is required' })
     }
 
-    // Build update object
-    const updatePayload: Record<string, any> = {}
-    if (title !== undefined) updatePayload.title = title?.trim() || ''
-    if (datetime !== undefined) updatePayload.datetime = datetime || null
-    if (all_day !== undefined) updatePayload.all_day = all_day
-    if (member_ids !== undefined) updatePayload.member_ids = member_ids
-    if (recurring !== undefined) updatePayload.recurring = recurring
-    if (notes !== undefined) updatePayload.notes = notes?.trim() || null
-    updatePayload.updated_at = new Date().toISOString()
+    // Build update object - cast to any to bypass Supabase type checking
+    const updates: any = {}
+    if (title !== undefined) updates.title = title?.trim() || ''
+    if (datetime !== undefined) updates.datetime = datetime || null
+    if (all_day !== undefined) updates.all_day = all_day
+    if (member_ids !== undefined) updates.member_ids = member_ids
+    if (recurring !== undefined) updates.recurring = recurring
+    if (notes !== undefined) updates.notes = notes?.trim() || null
+    updates.updated_at = new Date().toISOString()
 
-    // Cast the entire query to bypass Supabase type inference issues
-    const result = await (supabase
+    const { data: eventData, error: eventError } = await supabase
       .from('events')
-      .update(updatePayload)
+      .update(updates)
       .eq('id', eventId)
       .select()
-      .single() as any)
-
-    const { data: eventData, error: eventError } = result
+      .single()
 
     if (eventError || !eventData) {
       console.error('Event update error:', eventError)
