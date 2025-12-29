@@ -34,7 +34,7 @@ export default async function handler(
       return res.status(400).json({ error: 'eventId is required' })
     }
 
-    // Build update object - cast to any to bypass Supabase type checking
+    // Build update object
     const updates: any = {}
     if (title !== undefined) updates.title = title?.trim() || ''
     if (datetime !== undefined) updates.datetime = datetime || null
@@ -44,7 +44,8 @@ export default async function handler(
     if (notes !== undefined) updates.notes = notes?.trim() || null
     updates.updated_at = new Date().toISOString()
 
-    const { data: eventData, error: eventError } = await supabase
+    // Cast supabase to any to bypass type checking for this operation
+    const { data: eventData, error: eventError } = await (supabase as any)
       .from('events')
       .update(updates)
       .eq('id', eventId)
