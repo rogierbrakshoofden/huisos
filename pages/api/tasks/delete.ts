@@ -35,13 +35,13 @@ export default async function handler(
 
     // Log activity
     if (actorId) {
-      await supabase.from('activity_log').insert({
+      await (supabase as any).from('activity_log').insert({
         actor_id: actorId,
         action_type: 'task_deleted',
         entity_type: 'task',
         entity_id: taskId,
         metadata: {},
-      })
+      } as any)
     }
 
     return res.status(200).json({ success: true })
