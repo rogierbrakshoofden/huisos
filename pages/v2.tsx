@@ -357,6 +357,23 @@ function V2DashboardContent() {
 
       if (!activeUserId) throw new Error('No active user')
 
+      // BUG FIX #1: Check if task has incomplete subtasks - complete them all first
+      const taskSubtasks = state.subtasks.get(taskId) || []
+      const incompleteSubtasks = taskSubtasks.filter(s => !s.completed)
+
+      // Complete all incomplete subtasks first
+      for (const subtask of incompleteSubtasks) {
+        await fetch('/api/subtasks/complete', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            subtask_id: subtask.id,
+            completed_by: activeUserId,
+          }),
+        })
+      }
+
+      // Then complete the main task
       const response = await fetch('/api/tasks/complete', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -377,7 +394,7 @@ function V2DashboardContent() {
         payload: completedTask as Task,
       })
 
-      toast('✨ Chore completed! Tokens earned! Next rotation: ', 'success')
+      toast('✨ Chore completed! Tokens earned!', 'success')
 
       confetti({
         particleCount: 100,
@@ -628,16 +645,7 @@ function V2DashboardContent() {
 
         {activeTab === 'work' && (
           <div className="space-y-4">
-            <TokenWidget
-              familyMembers={state.familyMembers}
-              tokens={state.tokens}
-            />
-            <button
-              onClick={() => setIsRewardStoreOpen(true)}
-              className="w-full px-4 py-3 rounded-lg bg-amber-600/20 border border-amber-600/50 text-amber-300 hover:bg-amber-600/30 transition-colors mb-4 text-sm font-medium"
-            >
-              🎁 Visit Reward Store
-            </button>
+            {/* BUG FIX #2: Task list now appears FIRST */}
             {tasks.length === 0 ? (
               <div className="text-center py-12">
                 <p className="text-slate-400 mb-4">No tasks</p>
@@ -665,6 +673,20 @@ function V2DashboardContent() {
                 ))}
               </div>
             )}
+
+            {/* BUG FIX #2: Token widget and reward button MOVED BELOW tasks */}
+            <div className="mt-6 space-y-3">
+              <TokenWidget
+                familyMembers={state.familyMembers}
+                tokens={state.tokens}
+              />
+              <button
+                onClick={() => setIsRewardStoreOpen(true)}
+                className="w-full px-4 py-3 rounded-lg bg-amber-600/20 border border-amber-600/50 text-amber-300 hover:bg-amber-600/30 transition-colors text-sm font-medium"
+              >
+                🎁 Visit Reward Store
+              </button>
+            </div>
           </div>
         )}
 
