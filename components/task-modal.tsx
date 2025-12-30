@@ -32,6 +32,7 @@ export function TaskModal({
   // Subtask state
   const [subtasks, setSubtasks] = useState<Subtask[]>([])
   const [newSubtaskTitle, setNewSubtaskTitle] = useState('')
+  const [showSubtaskInput, setShowSubtaskInput] = useState(false)
   const [editingSubtaskId, setEditingSubtaskId] = useState<string | null>(null)
   const [editingSubtaskTitle, setEditingSubtaskTitle] = useState('')
 
@@ -57,6 +58,7 @@ export function TaskModal({
     }
     setErrors({})
     setNewSubtaskTitle('')
+    setShowSubtaskInput(false)
     setEditingSubtaskId(null)
   }, [task, isOpen])
 
@@ -117,6 +119,7 @@ export function TaskModal({
         const newSubtask = await response.json()
         setSubtasks(prev => [...prev, newSubtask])
         setNewSubtaskTitle('')
+        setShowSubtaskInput(false)
       }
     } catch (err) {
       console.error('Failed to create subtask:', err)
@@ -331,112 +334,128 @@ export function TaskModal({
             />
           </div>
 
-          {/* Subtasks Section */}
-          {task?.id && (
-            <div className="border-t border-slate-700 pt-5">
-              <div className="flex items-center justify-between mb-3">
-                <h3 className="text-sm font-semibold text-slate-300">Subtasks</h3>
+          {/* Subtasks Section - Always show, but with different message for new tasks */}
+          <div className="border-t border-slate-700 pt-5">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-sm font-semibold text-slate-300">Subtasks</h3>
+              {task?.id ? (
                 <button
-                  onClick={() => setNewSubtaskTitle('')}
+                  onClick={() => setShowSubtaskInput(true)}
                   className="inline-flex items-center gap-2 px-3 py-1 bg-slate-700 hover:bg-slate-600 text-slate-200 text-sm rounded-lg transition-colors"
                 >
                   <Plus size={16} />
                   Add
                 </button>
-              </div>
+              ) : null}
+            </div>
 
-              {subtasks.length === 0 && !newSubtaskTitle && (
-                <p className="text-slate-500 text-sm italic py-3">
-                  No subtasks yet. Add one to get started!
-                </p>
-              )}
+            {!task?.id ? (
+              <p className="text-slate-500 text-sm italic py-3">
+                💡 Save the task first, then you can add subtasks
+              </p>
+            ) : (
+              <>
+                {subtasks.length === 0 && !showSubtaskInput && (
+                  <p className="text-slate-500 text-sm italic py-3">
+                    No subtasks yet. Add one to get started!
+                  </p>
+                )}
 
-              {/* Subtask List */}
-              <div className="space-y-2">
-                {subtasks.map(subtask => (
-                  <div
-                    key={subtask.id}
-                    className="flex items-center gap-2 p-2 bg-slate-800 rounded-lg group"
-                  >
-                    <div className="text-slate-500 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <GripVertical size={16} />
-                    </div>
-
-                    {editingSubtaskId === subtask.id ? (
-                      <input
-                        autoFocus
-                        type="text"
-                        value={editingSubtaskTitle}
-                        onChange={e => setEditingSubtaskTitle(e.target.value)}
-                        onBlur={() => {
-                          if (editingSubtaskTitle.trim() && editingSubtaskTitle !== subtask.title) {
-                            handleUpdateSubtask(subtask.id, editingSubtaskTitle)
-                          } else {
-                            setEditingSubtaskId(null)
-                          }
-                        }}
-                        onKeyDown={e => {
-                          if (e.key === 'Enter') {
-                            if (editingSubtaskTitle.trim()) {
-                              handleUpdateSubtask(subtask.id, editingSubtaskTitle)
-                            }
-                          }
-                        }}
-                        className="flex-1 px-2 py-1 bg-slate-700 border border-slate-600 rounded text-white text-sm focus:outline-none focus:border-slate-500"
-                      />
-                    ) : (
-                      <button
-                        onClick={() => {
-                          setEditingSubtaskId(subtask.id)
-                          setEditingSubtaskTitle(subtask.title)
-                        }}
-                        className={`flex-1 text-left px-2 py-1 rounded text-sm ${
-                          subtask.completed
-                            ? 'text-slate-500 line-through'
-                            : 'text-slate-200'
-                        }`}
-                      >
-                        {subtask.title}
-                      </button>
-                    )}
-
-                    <button
-                      onClick={() => handleDeleteSubtask(subtask.id)}
-                      className="text-slate-500 hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100"
+                {/* Subtask List */}
+                <div className="space-y-2">
+                  {subtasks.map(subtask => (
+                    <div
+                      key={subtask.id}
+                      className="flex items-center gap-2 p-2 bg-slate-800 rounded-lg group"
                     >
-                      <Trash2 size={16} />
+                      <div className="text-slate-500 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <GripVertical size={16} />
+                      </div>
+
+                      {editingSubtaskId === subtask.id ? (
+                        <input
+                          autoFocus
+                          type="text"
+                          value={editingSubtaskTitle}
+                          onChange={e => setEditingSubtaskTitle(e.target.value)}
+                          onBlur={() => {
+                            if (editingSubtaskTitle.trim() && editingSubtaskTitle !== subtask.title) {
+                              handleUpdateSubtask(subtask.id, editingSubtaskTitle)
+                            } else {
+                              setEditingSubtaskId(null)
+                            }
+                          }}
+                          onKeyDown={e => {
+                            if (e.key === 'Enter') {
+                              if (editingSubtaskTitle.trim()) {
+                                handleUpdateSubtask(subtask.id, editingSubtaskTitle)
+                              }
+                            }
+                          }}
+                          className="flex-1 px-2 py-1 bg-slate-700 border border-slate-600 rounded text-white text-sm focus:outline-none focus:border-slate-500"
+                        />
+                      ) : (
+                        <button
+                          onClick={() => {
+                            setEditingSubtaskId(subtask.id)
+                            setEditingSubtaskTitle(subtask.title)
+                          }}
+                          className={`flex-1 text-left px-2 py-1 rounded text-sm ${
+                            subtask.completed
+                              ? 'text-slate-500 line-through'
+                              : 'text-slate-200'
+                          }`}
+                        >
+                          {subtask.title}
+                        </button>
+                      )}
+
+                      <button
+                        onClick={() => handleDeleteSubtask(subtask.id)}
+                        className="text-slate-500 hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100"
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+
+                {/* New Subtask Input */}
+                {showSubtaskInput && (
+                  <div className="flex items-center gap-2 p-2 bg-slate-800 rounded-lg mt-2">
+                    <input
+                      autoFocus
+                      type="text"
+                      value={newSubtaskTitle}
+                      onChange={e => setNewSubtaskTitle(e.target.value)}
+                      onKeyDown={e => {
+                        if (e.key === 'Enter') {
+                          handleAddSubtask()
+                        } else if (e.key === 'Escape') {
+                          setShowSubtaskInput(false)
+                          setNewSubtaskTitle('')
+                        }
+                      }}
+                      onBlur={() => {
+                        if (!newSubtaskTitle.trim()) {
+                          setShowSubtaskInput(false)
+                        }
+                      }}
+                      placeholder="Type subtask title..."
+                      className="flex-1 px-2 py-1 bg-transparent text-white text-sm placeholder-slate-500 focus:outline-none"
+                    />
+                    <button
+                      onClick={handleAddSubtask}
+                      disabled={!newSubtaskTitle.trim()}
+                      className="px-3 py-1 bg-emerald-600 hover:bg-emerald-700 text-white text-sm rounded transition-colors disabled:opacity-50"
+                    >
+                      Save
                     </button>
                   </div>
-                ))}
-              </div>
-
-              {/* New Subtask Input */}
-              {newSubtaskTitle !== '' && (
-                <div className="flex items-center gap-2 p-2 bg-slate-800 rounded-lg mt-2">
-                  <input
-                    autoFocus
-                    type="text"
-                    value={newSubtaskTitle}
-                    onChange={e => setNewSubtaskTitle(e.target.value)}
-                    onKeyDown={e => {
-                      if (e.key === 'Enter') {
-                        handleAddSubtask()
-                      }
-                    }}
-                    placeholder="Type subtask title..."
-                    className="flex-1 px-2 py-1 bg-transparent text-white text-sm placeholder-slate-500 focus:outline-none"
-                  />
-                  <button
-                    onClick={handleAddSubtask}
-                    disabled={!newSubtaskTitle.trim()}
-                    className="px-3 py-1 bg-emerald-600 hover:bg-emerald-700 text-white text-sm rounded transition-colors disabled:opacity-50"
-                  >
-                    Save
-                  </button>
-                </div>
-              )}
-            </div>
-          )}
+                )}
+              </>
+            )}
+          </div>
 
           {/* Error message */}
           {errors.submit && (
