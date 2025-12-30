@@ -2,6 +2,8 @@
 
 A household management system for the family. Track chores, tasks, events, and presence across devices.
 
+**Status**: Phase 7 Complete ✅ Deploying...
+
 ## Features
 
 - 🏠 **Chores**: Rotating household tasks with automatic assignment
