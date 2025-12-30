@@ -44,7 +44,7 @@ export default async function handler(
       return res.status(400).json({ error: 'completedBy is required' })
     }
 
-    // Fetch the task first to get token_value
+    // Fetch the task first
     const result: any = await (supabase as any)
       .from('tasks')
       .select()
@@ -62,7 +62,6 @@ export default async function handler(
     const task = taskData as Task
 
     const completedAt = new Date().toISOString()
-    const completedDate = completedAt.split('T')[0]
 
     // Update task with completion info
     const updateResult: any = await (supabase as any)
@@ -70,8 +69,6 @@ export default async function handler(
       .update({
         completed: true,
         completed_at: completedAt,
-        completed_by: completedBy,
-        completed_date: completedDate,
         updated_at: completedAt,
       })
       .eq('id', taskId)
@@ -88,25 +85,6 @@ export default async function handler(
       })
     }
 
-    // Award tokens if task has a token value
-    if (task.token_value && task.token_value > 0) {
-      const { data: tokenRecord, error: tokenError } = await supabase
-        .from('tokens')
-        .insert({
-          member_id: completedBy,
-          amount: task.token_value,
-          reason: `Task completion: ${task.title}`,
-          task_completion_id: taskId,
-        } as any)
-        .select()
-        .single()
-
-      if (tokenError) {
-        console.error('⚠️ Token insert error:', tokenError)
-        // Continue anyway - token awarding failure shouldn't break completion
-      }
-    }
-
     // Log activity
     await supabase.from('activity_log').insert({
       actor_id: completedBy,
@@ -115,46 +93,8 @@ export default async function handler(
       entity_id: taskId,
       metadata: {
         title: task.title,
-        token_value_awarded: task.token_value || 0,
       },
     } as any)
-
-    // Auto-rotate if enabled
-    if (task.rotation_enabled && task.assignee_ids && task.assignee_ids.length > 0) {
-      const availableAssignees = task.assignee_ids.filter(
-        (id) => !(task.rotation_exclude_ids || []).includes(id)
-      )
-
-      if (availableAssignees.length > 0) {
-        const currentIndex = task.rotation_index || 0
-        const nextIndex = (currentIndex + 1) % availableAssignees.length
-        const nextAssigneeId = availableAssignees[nextIndex]
-
-        // Call rotation endpoint
-        try {
-          const appUrl = process.env.VERCEL_URL
-            ? `https://${process.env.VERCEL_URL}`
-            : 'http://localhost:3000'
-
-          const rotateRes = await fetch(`${appUrl}/api/tasks/rotate`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              taskId: taskId,
-              nextAssigneeId: nextAssigneeId,
-              completedBy: completedBy,
-            }),
-          })
-
-          if (!rotateRes.ok) {
-            console.warn('⚠️ Rotation failed:', await rotateRes.text())
-            // Don't fail the completion, just warn
-          }
-        } catch (err) {
-          console.warn('⚠️ Rotation error:', err)
-        }
-      }
-    }
 
     return res.status(200).json(updatedTask as Task)
   } catch (err) {
