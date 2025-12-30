@@ -578,7 +578,9 @@ function V2DashboardContent() {
   }
 
   const getTaskAssignees = (task: Task) => {
-    return state.familyMembers.filter((m) => task.assignee_ids.includes(m.id))
+    // assigned_to is now a single string, not an array
+    if (!task.assigned_to) return []
+    return state.familyMembers.filter((m) => m.id === task.assigned_to)
   }
 
   const getTokenBalance = (memberId: string) => {
