@@ -3,10 +3,20 @@ import { createClient } from '@supabase/supabase-js'
 import type { Database } from '@/types/database'
 import { Task } from '@/types/huisos-v2'
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
 
-const supabase = createClient<Database>(supabaseUrl, supabaseServiceKey)
+// Validate environment variables at startup
+if (!supabaseUrl || !supabaseServiceKey) {
+  console.error('❌ Missing Supabase environment variables in /api/tasks/create')
+  console.error('  NEXT_PUBLIC_SUPABASE_URL:', supabaseUrl ? '✓' : '✗ MISSING')
+  console.error('  SUPABASE_SERVICE_ROLE_KEY:', supabaseServiceKey ? '✓' : '✗ MISSING')
+}
+
+const supabase = createClient<Database>(
+  supabaseUrl || '',
+  supabaseServiceKey || ''
+)
 
 interface CreateTaskRequest {
   title: string
@@ -29,6 +39,13 @@ export default async function handler(
   }
 
   try {
+    // Check environment variables before processing
+    if (!supabaseUrl || !supabaseServiceKey) {
+      return res.status(500).json({
+        error: 'Server configuration error: Missing Supabase credentials. Contact admin.',
+      })
+    }
+
     const {
       title,
       description,
@@ -79,8 +96,10 @@ export default async function handler(
     const taskError = result.error
 
     if (taskError || !task) {
-      console.error('Task insert error:', taskError)
-      return res.status(500).json({ error: 'Failed to create task' })
+      console.error('❌ Task insert error:', taskError)
+      return res.status(500).json({
+        error: taskError?.message || 'Failed to create task',
+      })
     }
 
     // Log activity
@@ -98,7 +117,12 @@ export default async function handler(
 
     return res.status(201).json(task as Task)
   } catch (err) {
-    console.error('API error:', err)
-    return res.status(500).json({ error: 'Internal server error' })
+    console.error('❌ API error in /api/tasks/create:', err)
+    return res.status(500).json({
+      error:
+        err instanceof Error
+          ? err.message
+          : 'Internal server error',
+    })
   }
 }
