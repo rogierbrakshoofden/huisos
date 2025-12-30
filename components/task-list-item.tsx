@@ -2,15 +2,16 @@
 'use client'
 
 import React, { useState } from 'react'
-import { ChevronDown, ChevronUp } from 'lucide-react'
+import { ChevronDown, ChevronUp, Repeat } from 'lucide-react'
 import { Task, Subtask, FamilyMember } from '@/types/huisos-v2'
-import { FamilyMemberCircle } from '@/components/family-member-circle'
+import { AssigneeCircles } from '@/components/assignee-circles'
 import { SubtaskProgressPie } from '@/components/subtask-progress-pie'
+import { getNextAssignee } from '@/lib/rotation-utils'
 
 interface TaskListItemProps {
   task: Task
   subtasks?: Subtask[]
-  assignees: FamilyMember[]
+  familyMembers: FamilyMember[]
   onComplete: (taskId: string) => void
   onEdit: (task: Task) => void
   onDelete: (taskId: string) => void
@@ -21,7 +22,7 @@ interface TaskListItemProps {
 export function TaskListItem({
   task,
   subtasks = [],
-  assignees,
+  familyMembers,
   onComplete,
   onEdit,
   onDelete,
@@ -32,7 +33,17 @@ export function TaskListItem({
   const [completingSubtaskId, setCompletingSubtaskId] = useState<string | null>(null)
 
   const completedCount = subtasks.filter((s) => s.completed).length
-  const assigneeColor = assignees[0]?.color || '#8B5CF6'
+  
+  // Get assignee IDs (handle both array and legacy string format)
+  const assigneeIds = Array.isArray(task.assigned_to) 
+    ? task.assigned_to 
+    : task.assigned_to 
+      ? [task.assigned_to] 
+      : []
+  
+  // Get the primary assignee color for progress pie
+  const primaryAssignee = familyMembers.find(m => m.id === assigneeIds[0])
+  const assigneeColor = primaryAssignee?.color || '#8B5CF6'
 
   const daysUntilDue = task.due_date
     ? Math.ceil(
@@ -42,6 +53,10 @@ export function TaskListItem({
     : null
 
   const isOverdue = daysUntilDue !== null && daysUntilDue < 0
+  
+  // Check if task has rotation enabled
+  const isRotating = task.rotation_enabled && task.recurrence_type === 'repeating'
+  const nextAssignee = isRotating ? getNextAssignee(task, familyMembers) : null
 
   const handleCompleteSubtask = async (subtaskId: string) => {
     setCompletingSubtaskId(subtaskId)
@@ -94,6 +109,16 @@ export function TaskListItem({
           {task.completed && <span className="text-white text-sm">✓</span>}
         </button>
 
+        {/* Assignee circles - moved to left */}
+        <div className="flex-shrink-0">
+          <AssigneeCircles
+            assigneeIds={assigneeIds}
+            familyMembers={familyMembers}
+            size="sm"
+            max={3}
+          />
+        </div>
+
         {/* Task info */}
         <div className="flex-1 min-w-0">
           <div
@@ -107,6 +132,17 @@ export function TaskListItem({
 
           {/* Metadata */}
           <div className="flex items-center gap-2 mt-1 text-xs text-slate-400 flex-wrap">
+            {/* Rotation badge */}
+            {isRotating && nextAssignee && (
+              <span
+                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-blue-900/50 text-blue-200"
+                title={`Next up: ${nextAssignee.name}`}
+              >
+                <Repeat size={12} />
+                Next: {nextAssignee.name}
+              </span>
+            )}
+            
             {/* Due date */}
             {task.due_date && (
               <span
@@ -138,26 +174,6 @@ export function TaskListItem({
             />
           </div>
         )}
-
-        {/* Assignee circles */}
-        <div className="flex gap-1 flex-shrink-0">
-          {assignees.slice(0, 2).map((member) => (
-            <FamilyMemberCircle
-              key={member.id}
-              initials={member.initials}
-              color={member.color}
-              size="sm"
-            />
-          ))}
-          {assignees.length > 2 && (
-            <div
-              className="w-8 h-8 rounded-full bg-slate-700 flex items-center justify-center text-xs font-bold text-slate-300"
-              title={`${assignees.length - 2} more`}
-            >
-              +{assignees.length - 2}
-            </div>
-          )}
-        </div>
 
         {/* Expand button (if has subtasks) */}
         {subtasks.length > 0 && (
