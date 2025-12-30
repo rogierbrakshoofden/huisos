@@ -69,7 +69,6 @@ export default async function handler(
       .update({
         completed: true,
         completed_at: completedAt,
-        updated_at: completedAt,
       })
       .eq('id', taskId)
       .select()
