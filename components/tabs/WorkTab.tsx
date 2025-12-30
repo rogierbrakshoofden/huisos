@@ -29,14 +29,9 @@ export function WorkTab({
   onOpenNewTask,
   onOpenRewardStore,
 }: WorkTabProps) {
-  const getTaskAssignees = (task: Task) => {
-    if (!task.assigned_to) return []
-    return familyMembers.filter((m) => m.id === task.assigned_to)
-  }
-
   return (
     <div className="space-y-4">
-      {/* Task list appears FIRST (Bug Fix #2) */}
+      {/* Task list appears FIRST */}
       {tasks.length === 0 ? (
         <div className="text-center py-12">
           <p className="text-slate-400 mb-4">No tasks</p>
@@ -54,7 +49,7 @@ export function WorkTab({
               key={task.id}
               task={task}
               subtasks={subtasksMap.get(task.id) || []}
-              assignees={getTaskAssignees(task)}
+              familyMembers={familyMembers}
               onComplete={onComplete}
               onEdit={onEdit}
               onDelete={onDelete}
@@ -65,7 +60,7 @@ export function WorkTab({
         </div>
       )}
 
-      {/* Token widget and reward button MOVED BELOW tasks (Bug Fix #2) */}
+      {/* Token widget and reward button */}
       <div className="mt-6 space-y-3">
         <TokenWidget familyMembers={familyMembers} tokens={tokens} />
         <button
