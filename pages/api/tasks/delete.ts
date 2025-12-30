@@ -2,10 +2,17 @@ import type { NextApiRequest, NextApiResponse } from 'next'
 import { createClient } from '@supabase/supabase-js'
 import type { Database } from '@/types/database'
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
 
-const supabase = createClient<Database>(supabaseUrl, supabaseServiceKey)
+if (!supabaseUrl || !supabaseServiceKey) {
+  console.error('❌ Missing Supabase env vars in /api/tasks/delete')
+}
+
+const supabase = createClient<Database>(
+  supabaseUrl || '',
+  supabaseServiceKey || ''
+)
 
 export default async function handler(
   req: NextApiRequest,
@@ -16,6 +23,12 @@ export default async function handler(
   }
 
   try {
+    if (!supabaseUrl || !supabaseServiceKey) {
+      return res.status(500).json({
+        error: 'Server configuration error: Missing Supabase credentials.',
+      })
+    }
+
     const { taskId, actorId } = req.body
 
     if (!taskId) {
@@ -29,8 +42,10 @@ export default async function handler(
       .eq('id', taskId)
 
     if (taskError) {
-      console.error('Task delete error:', taskError)
-      return res.status(500).json({ error: 'Failed to delete task' })
+      console.error('❌ Task delete error:', taskError)
+      return res.status(500).json({
+        error: taskError.message || 'Failed to delete task',
+      })
     }
 
     // Log activity
@@ -46,7 +61,12 @@ export default async function handler(
 
     return res.status(200).json({ success: true })
   } catch (err) {
-    console.error('API error:', err)
-    return res.status(500).json({ error: 'Internal server error' })
+    console.error('❌ API error in /api/tasks/delete:', err)
+    return res.status(500).json({
+      error:
+        err instanceof Error
+          ? err.message
+          : 'Internal server error',
+    })
   }
 }
