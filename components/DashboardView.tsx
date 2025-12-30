@@ -180,8 +180,8 @@ export function DashboardView({
             familyMembers={state.familyMembers}
             currentUserId={currentUserId}
             isParent={['rogier', 'anne'].includes(state.activeUserId as string)}
-            onApprove={onApproveRewardClaim}
-            onClaim={onClaimReward}
+            onApprove={(claimId) => { onApproveRewardClaim(claimId); return Promise.resolve(); }}
+            onClaim={(claimId) => { onClaimReward(claimId); return Promise.resolve(); }}
           />
         )}
 
