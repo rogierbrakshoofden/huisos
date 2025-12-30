@@ -71,6 +71,7 @@ export default async function handler(
     }
 
     // Log activity if meaningful changes
+    // BUG FIX #3: Add title to metadata
     if (Object.keys(updatePayload).length > 0) {
       await (supabase as any).from('activity_log').insert({
         actor_id: updated_by || 'system',
@@ -78,6 +79,7 @@ export default async function handler(
         entity_type: 'subtask',
         entity_id: subtask.id,
         metadata: {
+          title: subtask.title,
           changes: updatePayload,
         },
       } as any)
