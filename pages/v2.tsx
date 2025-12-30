@@ -589,9 +589,12 @@ function V2DashboardContent() {
   }
 
   const getTaskAssignees = (task: Task) => {
-    // assigned_to is now a single string, not an array
     if (!task.assigned_to) return []
-    return state.familyMembers.filter((m) => m.id === task.assigned_to)
+    // Handle both array (new) and string (legacy) formats
+    const assigneeIds = Array.isArray(task.assigned_to) 
+      ? task.assigned_to 
+      : [task.assigned_to]
+    return state.familyMembers.filter((m) => assigneeIds.includes(m.id))
   }
 
   const getTokenBalance = (memberId: string) => {
@@ -663,7 +666,7 @@ function V2DashboardContent() {
                     key={task.id}
                     task={task}
                     subtasks={state.subtasks.get(task.id) || []}
-                    assignees={getTaskAssignees(task)}
+                    familyMembers={state.familyMembers}
                     onComplete={handleCompleteTask}
                     onEdit={handleEditTask}
                     onDelete={handleDeleteTask}
