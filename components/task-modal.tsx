@@ -23,13 +23,9 @@ export function TaskModal({
   currentUserId,
 }: TaskModalProps) {
   const [title, setTitle] = useState('')
-  const [description, setDescription] = useState('')
   const [assigneeIds, setAssigneeIds] = useState<string[]>([])
-  const [recurrenceType, setRecurrenceType] = useState<'once' | 'repeating'>('once')
-  const [frequency, setFrequency] = useState<Frequency>('daily')
   const [dueDate, setDueDate] = useState('')
-  const [tokenValue, setTokenValue] = useState(1)
-  const [notes, setNotes] = useState('')
+  const [note, setNote] = useState('')
   const [isSaving, setIsSaving] = useState(false)
   const [errors, setErrors] = useState<Record<string, string>>({})
   
@@ -43,13 +39,9 @@ export function TaskModal({
   useEffect(() => {
     if (task) {
       setTitle(task.title)
-      setDescription(task.description || '')
-      setAssigneeIds(task.assignee_ids || [])
-      setRecurrenceType((task.recurrence_type as any) || 'once')
-      setFrequency((task.frequency as Frequency) || 'daily')
+      setAssigneeIds(task.assigned_to ? [task.assigned_to] : [])
       setDueDate(task.due_date || '')
-      setTokenValue(task.token_value || 1)
-      setNotes(task.notes || '')
+      setNote(task.note || '')
       
       // Load subtasks if editing existing task
       if (task.id) {
@@ -58,13 +50,9 @@ export function TaskModal({
     } else {
       // Reset for new task
       setTitle('')
-      setDescription('')
       setAssigneeIds([])
-      setRecurrenceType('once')
-      setFrequency('daily')
       setDueDate('')
-      setTokenValue(1)
-      setNotes('')
+      setNote('')
       setSubtasks([])
     }
     setErrors({})
@@ -97,7 +85,7 @@ export function TaskModal({
       newErrors.assignees = 'At least one person must be assigned'
     }
 
-    if (recurrenceType === 'once' && dueDate) {
+    if (dueDate) {
       const dueDateObj = new Date(dueDate)
       const today = new Date()
       today.setHours(0, 0, 0, 0)
@@ -181,15 +169,14 @@ export function TaskModal({
 
     setIsSaving(true)
     try {
+      // Map to actual schema: assigned_to is a single string (first assignee), not an array
+      const assignedTo = assigneeIds.length > 0 ? assigneeIds[0] : null
+
       await onSave({
         title: title.trim(),
-        description: description.trim() || undefined,
-        assignee_ids: assigneeIds,
-        recurrence_type: recurrenceType,
-        frequency: recurrenceType === 'repeating' ? frequency : undefined,
-        due_date: recurrenceType === 'once' ? dueDate : undefined,
-        token_value: tokenValue,
-        notes: notes.trim() || undefined,
+        assigned_to: assignedTo || undefined,
+        due_date: dueDate || undefined,
+        note: note.trim() || undefined,
       })
       onClose()
     } catch (err) {
@@ -272,20 +259,6 @@ export function TaskModal({
             <p className="text-xs text-slate-500 mt-1">{title.length}/100</p>
           </div>
 
-          {/* Description */}
-          <div>
-            <label className="block text-sm font-medium text-slate-300 mb-2">
-              Description
-            </label>
-            <textarea
-              value={description}
-              onChange={e => setDescription(e.target.value)}
-              placeholder="Add more details..."
-              rows={3}
-              className="w-full px-4 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:border-slate-600 focus:ring-1 focus:ring-slate-600 resize-none"
-            />
-          </div>
-
           {/* Assignees */}
           <div>
             <label className="block text-sm font-medium text-slate-300 mb-3">
@@ -324,107 +297,34 @@ export function TaskModal({
             )}
           </div>
 
-          {/* Recurrence Type Toggle */}
-          <div>
-            <label className="block text-sm font-medium text-slate-300 mb-3">
-              Type
-            </label>
-            <div className="flex gap-2">
-              <button
-                onClick={() => setRecurrenceType('once')}
-                className={`flex-1 px-4 py-2 rounded-lg font-medium transition-all ${
-                  recurrenceType === 'once'
-                    ? 'bg-slate-600 text-white'
-                    : 'bg-slate-800 text-slate-400 hover:bg-slate-750'
-                }`}
-              >
-                Once
-              </button>
-              <button
-                onClick={() => setRecurrenceType('repeating')}
-                className={`flex-1 px-4 py-2 rounded-lg font-medium transition-all ${
-                  recurrenceType === 'repeating'
-                    ? 'bg-slate-600 text-white'
-                    : 'bg-slate-800 text-slate-400 hover:bg-slate-750'
-                }`}
-              >
-                Repeating
-              </button>
-            </div>
-          </div>
-
-          {/* Conditional: Due Date (if Once) */}
-          {recurrenceType === 'once' && (
-            <div>
-              <label className="block text-sm font-medium text-slate-300 mb-2">
-                Due Date
-              </label>
-              <input
-                type="date"
-                value={dueDate}
-                onChange={e => {
-                  setDueDate(e.target.value)
-                  if (errors.dueDate) setErrors(prev => ({ ...prev, dueDate: '' }))
-                }}
-                min={new Date().toISOString().split('T')[0]}
-                className="w-full px-4 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white focus:outline-none focus:border-slate-600 focus:ring-1 focus:ring-slate-600"
-              />
-              {errors.dueDate && (
-                <p className="text-red-400 text-sm mt-1">{errors.dueDate}</p>
-              )}
-            </div>
-          )}
-
-          {/* Conditional: Frequency (if Repeating) */}
-          {recurrenceType === 'repeating' && (
-            <div>
-              <label className="block text-sm font-medium text-slate-300 mb-2">
-                Frequency
-              </label>
-              <div className="relative">
-                <select
-                  value={frequency}
-                  onChange={e => setFrequency(e.target.value as Frequency)}
-                  className="w-full px-4 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white focus:outline-none focus:border-slate-600 focus:ring-1 focus:ring-slate-600 appearance-none"
-                >
-                  <option value="daily">Daily</option>
-                  <option value="every_two_days">Every 2 days</option>
-                  <option value="weekly">Weekly</option>
-                  <option value="monthly">Monthly</option>
-                  <option value="yearly">Yearly</option>
-                </select>
-                <ChevronDown
-                  size={18}
-                  className="absolute right-3 top-2.5 text-slate-400 pointer-events-none"
-                />
-              </div>
-            </div>
-          )}
-
-          {/* Token Value */}
+          {/* Due Date */}
           <div>
             <label className="block text-sm font-medium text-slate-300 mb-2">
-              Token Value
+              Due Date
             </label>
             <input
-              type="number"
-              min="0"
-              max="10"
-              value={tokenValue}
-              onChange={e => setTokenValue(Math.max(0, parseInt(e.target.value) || 0))}
+              type="date"
+              value={dueDate}
+              onChange={e => {
+                setDueDate(e.target.value)
+                if (errors.dueDate) setErrors(prev => ({ ...prev, dueDate: '' }))
+              }}
+              min={new Date().toISOString().split('T')[0]}
               className="w-full px-4 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white focus:outline-none focus:border-slate-600 focus:ring-1 focus:ring-slate-600"
             />
-            <p className="text-xs text-slate-500 mt-1">Tokens earned when completed</p>
+            {errors.dueDate && (
+              <p className="text-red-400 text-sm mt-1">{errors.dueDate}</p>
+            )}
           </div>
 
-          {/* Notes */}
+          {/* Note */}
           <div>
             <label className="block text-sm font-medium text-slate-300 mb-2">
               Notes
             </label>
             <textarea
-              value={notes}
-              onChange={e => setNotes(e.target.value)}
+              value={note}
+              onChange={e => setNote(e.target.value)}
               placeholder="Any additional notes..."
               rows={2}
               className="w-full px-4 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:border-slate-600 focus:ring-1 focus:ring-slate-600 resize-none"
