@@ -78,32 +78,21 @@ export function TaskListItem({
     >
       {/* Main row */}
       <div className="flex items-center gap-3 p-4">
-        {/* Checkbox or Progress Pie */}
-        {subtasks.length > 0 ? (
-          <div className="flex-shrink-0 cursor-pointer" onClick={() => setIsExpanded(!isExpanded)}>
-            <SubtaskProgressPie
-              completed={completedCount}
-              total={subtasks.length}
-              color={assigneeColor}
-              size="md"
-            />
-          </div>
-        ) : (
-          <button
-            onClick={() => onComplete(task.id)}
-            className={`
-              w-6 h-6 rounded border-2 flex items-center justify-center
-              transition-all duration-200 flex-shrink-0
-              ${
-                task.completed
-                  ? 'bg-emerald-600 border-emerald-500'
-                  : 'border-slate-600 hover:border-slate-500'
-              }
-            `}
-          >
-            {task.completed && <span className="text-white text-sm">✓</span>}
-          </button>
-        )}
+        {/* Main task checkbox - always visible */}
+        <button
+          onClick={() => onComplete(task.id)}
+          className={`
+            w-6 h-6 rounded border-2 flex items-center justify-center
+            transition-all duration-200 flex-shrink-0
+            ${
+              task.completed
+                ? 'bg-emerald-600 border-emerald-500'
+                : 'border-slate-600 hover:border-slate-500'
+            }
+          `}
+        >
+          {task.completed && <span className="text-white text-sm">✓</span>}
+        </button>
 
         {/* Task info */}
         <div className="flex-1 min-w-0">
@@ -137,6 +126,18 @@ export function TaskListItem({
             )}
           </div>
         </div>
+
+        {/* Progress pie - on the right if has subtasks */}
+        {subtasks.length > 0 && (
+          <div className="flex-shrink-0 cursor-pointer" onClick={() => setIsExpanded(!isExpanded)}>
+            <SubtaskProgressPie
+              completed={completedCount}
+              total={subtasks.length}
+              color={assigneeColor}
+              size="md"
+            />
+          </div>
+        )}
 
         {/* Assignee circles */}
         <div className="flex gap-1 flex-shrink-0">
