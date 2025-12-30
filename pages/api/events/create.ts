@@ -3,10 +3,17 @@ import { createClient } from '@supabase/supabase-js'
 import type { Database } from '@/types/database'
 import { Event } from '@/types/huisos-v2'
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
 
-const supabase = createClient<Database>(supabaseUrl, supabaseServiceKey)
+if (!supabaseUrl || !supabaseServiceKey) {
+  console.error('❌ Missing Supabase env vars in /api/events/create')
+}
+
+const supabase = createClient<Database>(
+  supabaseUrl || '',
+  supabaseServiceKey || ''
+)
 
 interface CreateEventRequest {
   title: string
@@ -27,6 +34,12 @@ export default async function handler(
   }
 
   try {
+    if (!supabaseUrl || !supabaseServiceKey) {
+      return res.status(500).json({
+        error: 'Server configuration error: Missing Supabase credentials.',
+      })
+    }
+
     const {
       title,
       datetime,
@@ -68,8 +81,10 @@ export default async function handler(
     const eventError = result.error
 
     if (eventError || !eventData) {
-      console.error('Event insert error:', eventError)
-      return res.status(500).json({ error: 'Failed to create event' })
+      console.error('❌ Event insert error:', eventError)
+      return res.status(500).json({
+        error: eventError?.message || 'Failed to create event',
+      })
     }
 
     const event = eventData as Event
@@ -88,7 +103,12 @@ export default async function handler(
 
     return res.status(201).json(event)
   } catch (err) {
-    console.error('API error:', err)
-    return res.status(500).json({ error: 'Internal server error' })
+    console.error('❌ API error in /api/events/create:', err)
+    return res.status(500).json({
+      error:
+        err instanceof Error
+          ? err.message
+          : 'Internal server error',
+    })
   }
 }
