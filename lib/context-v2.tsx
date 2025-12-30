@@ -219,9 +219,14 @@ export function selectTasksForUser(state: AppState): Task[] {
   if (state.activeUserId === 'everybody') {
     return state.tasks
   }
-  return state.tasks.filter(task =>
-    task.assigned_to === state.activeUserId
-  )
+  return state.tasks.filter(task => {
+    if (!task.assigned_to) return false
+    // Handle array format (new) and string format (legacy)
+    if (Array.isArray(task.assigned_to)) {
+      return task.assigned_to.includes(state.activeUserId as string)
+    }
+    return task.assigned_to === state.activeUserId
+  })
 }
 
 export function selectEventsForUser(state: AppState): Event[] {
