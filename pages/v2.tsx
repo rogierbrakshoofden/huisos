@@ -14,6 +14,7 @@ import { TokenWidget } from '@/components/token-widget'
 import { RewardStoreModal } from '@/components/reward-store-modal'
 import { MyRewardsTab } from '@/components/my-rewards-tab'
 import { StatsTab } from '@/components/stats-tab'
+import { DiagnosticsFooter } from '@/components/diagnostics-footer'
 import { Task, Event, Subtask } from '@/types/huisos-v2'
 import confetti from 'canvas-confetti'
 
@@ -811,10 +812,7 @@ function V2DashboardContent() {
         onRemove={(id) => setToasts((prev) => prev.filter((t) => t.id !== id))}
       />
 
-      <div className="fixed bottom-32 left-4 text-xs text-slate-600 pointer-events-none">
-        <p>Phase 7: Subtasks Complete! 🎯</p>
-        <p>Realtime sync: {isOnline ? '🟢' : '🔴'}</p>
-      </div>
+      <DiagnosticsFooter isOnline={isOnline} />
     </div>
   )
 }
