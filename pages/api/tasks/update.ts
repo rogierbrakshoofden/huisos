@@ -76,8 +76,6 @@ export default async function handler(
       updates.completed_at = updateData.completed_at
     }
 
-    updates.updated_at = new Date().toISOString()
-
     // Update task
     const result: any = await (supabase as any)
       .from('tasks')
