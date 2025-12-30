@@ -47,20 +47,20 @@ interface DashboardViewProps {
   setActiveTab: (tab: 'work' | 'events' | 'stats' | 'log' | 'rewards') => void
   switchUser: (userId: string | 'everybody') => void
   
-  // Task handlers
-  onCompleteTask: (taskId: string) => void
-  onDeleteTask: (taskId: string) => void
-  onToggleSubtask: (subtaskId: string) => void
+  // Task handlers - ALL ASYNC
+  onCompleteTask: (taskId: string) => Promise<void>
+  onDeleteTask: (taskId: string) => Promise<void>
+  onToggleSubtask: (subtaskId: string) => Promise<void>
   onSaveTask: (taskData: Partial<Task>) => Promise<void>
   
-  // Event handlers
+  // Event handlers - ALL ASYNC
   onSaveEvent: (eventData: Partial<Event>) => Promise<void>
-  onDeleteEvent: (eventId: string) => void
+  onDeleteEvent: (eventId: string) => Promise<void>
   
-  // Reward handlers
+  // Reward handlers - ALL ASYNC
   onRedeemReward: (rewardId: string) => Promise<void>
-  onApproveRewardClaim: (claimId: string) => void
-  onClaimReward: (claimId: string) => void
+  onApproveRewardClaim: (claimId: string) => Promise<void>
+  onClaimReward: (claimId: string) => Promise<void>
   
   // Utility functions
   getTokenBalance: (memberId: string) => number
@@ -180,8 +180,8 @@ export function DashboardView({
             familyMembers={state.familyMembers}
             currentUserId={currentUserId}
             isParent={['rogier', 'anne'].includes(state.activeUserId as string)}
-            onApprove={(claimId) => { onApproveRewardClaim(claimId); return Promise.resolve(); }}
-            onClaim={(claimId) => { onClaimReward(claimId); return Promise.resolve(); }}
+            onApprove={onApproveRewardClaim}
+            onClaim={onClaimReward}
           />
         )}
 
