@@ -21,6 +21,10 @@ interface CreateTaskRequest {
   due_date?: string
   note?: string
   created_by: string
+  recurrence_type?: 'once' | 'repeating'
+  rotation_enabled?: boolean
+  rotation_exclude_ids?: string[]
+  rotation_index?: number
 }
 
 export default async function handler(
@@ -38,7 +42,17 @@ export default async function handler(
       })
     }
 
-    const { title, assigned_to, due_date, note, created_by }: CreateTaskRequest = req.body
+    const { 
+      title, 
+      assigned_to, 
+      due_date, 
+      note, 
+      created_by,
+      recurrence_type,
+      rotation_enabled,
+      rotation_exclude_ids,
+      rotation_index
+    }: CreateTaskRequest = req.body
 
     // Validation
     if (!title?.trim()) {
@@ -48,24 +62,33 @@ export default async function handler(
       return res.status(400).json({ error: 'created_by is required' })
     }
 
-    // Handle assigned_to: can be string or array, convert to single string
-    let assignedToValue: string | null = null
+    // Convert assigned_to to array format
+    let assignedToArray: string[] = []
     if (assigned_to) {
-      if (typeof assigned_to === 'string') {
-        assignedToValue = assigned_to
-      } else if (Array.isArray(assigned_to) && assigned_to.length > 0) {
-        assignedToValue = assigned_to[0]
+      if (Array.isArray(assigned_to)) {
+        assignedToArray = assigned_to.filter(id => id && id.trim())
+      } else if (typeof assigned_to === 'string') {
+        assignedToArray = [assigned_to]
       }
     }
 
-    // Insert task - only use columns that exist in schema
+    // Validate at least one assignee
+    if (assignedToArray.length === 0) {
+      return res.status(400).json({ error: 'At least one assignee is required' })
+    }
+
+    // Insert task with rotation fields
     const insertPayload: any = {
       title: title.trim(),
-      assigned_to: assignedToValue,
+      assigned_to: assignedToArray,
       due_date: due_date || null,
       note: note?.trim() || null,
       created_by,
       completed: false,
+      recurrence_type: recurrence_type || 'once',
+      rotation_enabled: rotation_enabled || false,
+      rotation_exclude_ids: rotation_exclude_ids || [],
+      rotation_index: rotation_index || 0,
     }
 
     const result: any = await (supabase as any)
@@ -92,6 +115,7 @@ export default async function handler(
       entity_id: task.id,
       metadata: {
         title: task.title,
+        assignee_count: assignedToArray.length,
       },
     } as any)
 

@@ -2,6 +2,7 @@ import type { NextApiRequest, NextApiResponse } from 'next'
 import { createClient } from '@supabase/supabase-js'
 import type { Database } from '@/types/database'
 import { Task } from '@/types/huisos-v2'
+import { getNextRotationIndex } from '@/lib/rotation-utils'
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
@@ -60,42 +61,115 @@ export default async function handler(
     }
 
     const task = taskData as Task
-
     const completedAt = new Date().toISOString()
 
-    // Update task with completion info
-    const updateResult: any = await (supabase as any)
-      .from('tasks')
-      .update({
-        completed: true,
-        completed_at: completedAt,
-      })
-      .eq('id', taskId)
-      .select()
-      .single()
+    // Check if rotation is enabled for repeating tasks
+    const shouldRotate = 
+      task.recurrence_type === 'repeating' && 
+      task.rotation_enabled && 
+      Array.isArray(task.assigned_to) &&
+      task.assigned_to.length > 1
 
-    const updatedTask = updateResult.data
-    const updateError = updateResult.error
-
-    if (updateError || !updatedTask) {
-      console.error('❌ Task update error:', updateError)
-      return res.status(500).json({
-        error: updateError?.message || 'Failed to complete task',
-      })
+    let updatePayload: any = {
+      completed: true,
+      completed_at: completedAt,
     }
 
-    // Log activity
-    await supabase.from('activity_log').insert({
-      actor_id: completedBy,
-      action_type: 'task_completed',
-      entity_type: 'task',
-      entity_id: taskId,
-      metadata: {
-        title: task.title,
-      },
-    } as any)
+    // Handle rotation if enabled
+    if (shouldRotate) {
+      const currentIndex = task.rotation_index || 0
+      const nextIndex = getNextRotationIndex(
+        currentIndex,
+        task.assigned_to,
+        task.rotation_exclude_ids || []
+      )
 
-    return res.status(200).json(updatedTask as Task)
+      // For repeating tasks with rotation, reset completion and advance rotation
+      updatePayload = {
+        completed: false,
+        completed_at: null,
+        rotation_index: nextIndex,
+      }
+
+      // Store previous and next assignee for logging
+      const previousAssignee = task.assigned_to[currentIndex]
+      const nextAssignee = task.assigned_to[nextIndex]
+
+      // Update task
+      const updateResult: any = await (supabase as any)
+        .from('tasks')
+        .update(updatePayload)
+        .eq('id', taskId)
+        .select()
+        .single()
+
+      const updatedTask = updateResult.data
+      const updateError = updateResult.error
+
+      if (updateError || !updatedTask) {
+        console.error('❌ Task update error:', updateError)
+        return res.status(500).json({
+          error: updateError?.message || 'Failed to complete task',
+        })
+      }
+
+      // Log task completion
+      await (supabase as any).from('activity_log').insert({
+        actor_id: completedBy,
+        action_type: 'task_completed',
+        entity_type: 'task',
+        entity_id: taskId,
+        metadata: {
+          title: task.title,
+        },
+      } as any)
+
+      // Log rotation event
+      await (supabase as any).from('activity_log').insert({
+        actor_id: completedBy,
+        action_type: 'task_rotated',
+        entity_type: 'task',
+        entity_id: taskId,
+        metadata: {
+          title: task.title,
+          previous_assignee: previousAssignee,
+          next_assignee: nextAssignee,
+        },
+      } as any)
+
+      return res.status(200).json(updatedTask as Task)
+    } else {
+      // Standard completion (no rotation)
+      const updateResult: any = await (supabase as any)
+        .from('tasks')
+        .update(updatePayload)
+        .eq('id', taskId)
+        .select()
+        .single()
+
+      const updatedTask = updateResult.data
+      const updateError = updateResult.error
+
+      if (updateError || !updatedTask) {
+        console.error('❌ Task update error:', updateError)
+        return res.status(500).json({
+          error: updateError?.message || 'Failed to complete task',
+        })
+      }
+
+      // Log activity
+      await (supabase as any).from('activity_log').insert({
+        actor_id: completedBy,
+        action_type: 'task_completed',
+        entity_type: 'task',
+        entity_id: taskId,
+        metadata: {
+          title: task.title,
+        },
+      } as any)
+
+      return res.status(200).json(updatedTask as Task)
+    }
   } catch (err) {
     console.error('❌ API error in /api/tasks/complete:', err)
     return res.status(500).json({
