@@ -18,13 +18,11 @@ const supabase = createClient<Database>(
 interface UpdateTaskRequest {
   taskId: string
   title?: string
-  description?: string
-  assignee_ids?: string[]
-  recurrence_type?: 'once' | 'repeating'
-  frequency?: 'daily' | 'every_two_days' | 'weekly' | 'monthly' | 'yearly'
-  due_date?: string
-  token_value?: number
-  notes?: string
+  assigned_to?: string | string[] | null
+  due_date?: string | null
+  note?: string | null
+  completed?: boolean
+  completed_at?: string | null
   [key: string]: any
 }
 
@@ -49,31 +47,27 @@ export default async function handler(
       return res.status(400).json({ error: 'taskId is required' })
     }
 
-    // Build update object, filtering out taskId
+    // Build update object with only valid columns
     const updates: Record<string, any> = {}
+    
     if (updateData.title !== undefined) {
       updates.title = updateData.title?.trim() || ''
     }
-    if (updateData.description !== undefined) {
-      updates.description = updateData.description?.trim() || null
-    }
-    if (updateData.assignee_ids !== undefined) {
-      updates.assignee_ids = updateData.assignee_ids
-    }
-    if (updateData.recurrence_type !== undefined) {
-      updates.recurrence_type = updateData.recurrence_type
-    }
-    if (updateData.frequency !== undefined) {
-      updates.frequency = updateData.frequency || null
+    if (updateData.assigned_to !== undefined) {
+      // Handle array or string
+      if (Array.isArray(updateData.assigned_to) && updateData.assigned_to.length > 0) {
+        updates.assigned_to = updateData.assigned_to[0]
+      } else if (typeof updateData.assigned_to === 'string') {
+        updates.assigned_to = updateData.assigned_to
+      } else {
+        updates.assigned_to = null
+      }
     }
     if (updateData.due_date !== undefined) {
       updates.due_date = updateData.due_date || null
     }
-    if (updateData.token_value !== undefined) {
-      updates.token_value = updateData.token_value
-    }
-    if (updateData.notes !== undefined) {
-      updates.notes = updateData.notes?.trim() || null
+    if (updateData.note !== undefined) {
+      updates.note = updateData.note?.trim() || null
     }
     if (updateData.completed !== undefined) {
       updates.completed = updateData.completed
@@ -81,16 +75,10 @@ export default async function handler(
     if (updateData.completed_at !== undefined) {
       updates.completed_at = updateData.completed_at
     }
-    if (updateData.completed_by !== undefined) {
-      updates.completed_by = updateData.completed_by
-    }
-    if (updateData.completed_date !== undefined) {
-      updates.completed_date = updateData.completed_date
-    }
 
     updates.updated_at = new Date().toISOString()
 
-    // Update task - cast entire result to any
+    // Update task
     const result: any = await (supabase as any)
       .from('tasks')
       .update(updates)
@@ -112,12 +100,11 @@ export default async function handler(
     const actorId = updateData.completed_by || 'system'
     await (supabase as any).from('activity_log').insert({
       actor_id: actorId,
-      action_type: updateData.completed ? 'task_completed' : 'task_edited',
+      action_type: updateData.completed ? 'task_completed' : 'task_updated',
       entity_type: 'task',
       entity_id: task.id,
       metadata: {
         title: task.title,
-        changes: Object.keys(updateData).filter(k => k !== 'taskId'),
       },
     } as any)
 
