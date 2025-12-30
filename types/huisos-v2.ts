@@ -17,25 +17,14 @@ export type Frequency = 'daily' | 'every_two_days' | 'weekly' | 'monthly' | 'yea
 export interface Task {
   id: string
   title: string
-  description?: string
-  recurrence_type: RecurrenceType
-  frequency?: Frequency
-  recurrence_end_date?: string
-  assignee_ids: string[]
-  rotation_enabled: boolean
-  rotation_index: number
-  rotation_exclude_ids: string[]
-  parent_task_id?: string
+  assigned_to?: string
   completed: boolean
   completed_at?: string
-  completed_by?: string
-  completed_date?: string
-  token_value: number
   due_date?: string
-  notes?: string
+  note?: string
   created_by?: string
   created_at: string
-  updated_at: string
+  updated_at?: string
   subtasks?: Subtask[]
 }
 
