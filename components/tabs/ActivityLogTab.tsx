@@ -53,42 +53,45 @@ export function ActivityLogTab({
         </div>
       ) : (
         <div className="space-y-2">
-          {activityLog.slice(0, 50).map((entry) => (
-            <div
-              key={entry.id}
-              onClick={() => handleLogClick(entry)}
-              className="bg-slate-800/60 border border-slate-700/50 rounded-lg p-4 cursor-pointer hover:bg-slate-800/80 transition-all"
-            >
-              <div className="flex items-start gap-3">
-                <div className="w-8 h-8 rounded-full bg-slate-700 flex items-center justify-center flex-shrink-0 text-xs font-bold text-white">
-                  {entry.actor?.initials || '?'}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="text-sm text-white">
-                    <span className="font-medium">
-                      {entry.actor?.name || 'Unknown'}
-                    </span>
-                    {' '}
-                    <span className="text-slate-400">
-                      {entry.action_type.replace(/_/g, ' ')}
-                    </span>
-                    {/* Bug Fix #3: Show entity name if available */}
-                    {entry.metadata?.title && (
-                      <>
-                        {' '}
-                        <span className="text-slate-300">
-                          "{entry.metadata.title}"
-                        </span>
-                      </>
-                    )}
+          {activityLog.slice(0, 50).map((entry) => {
+            const entityTitle = (entry.metadata as any)?.title as string | undefined
+            
+            return (
+              <div
+                key={entry.id}
+                onClick={() => handleLogClick(entry)}
+                className="bg-slate-800/60 border border-slate-700/50 rounded-lg p-4 cursor-pointer hover:bg-slate-800/80 transition-all"
+              >
+                <div className="flex items-start gap-3">
+                  <div className="w-8 h-8 rounded-full bg-slate-700 flex items-center justify-center flex-shrink-0 text-xs font-bold text-white">
+                    {entry.actor?.initials || '?'}
                   </div>
-                  <div className="text-xs text-slate-500 mt-1">
-                    {new Date(entry.created_at).toLocaleString()}
+                  <div className="flex-1 min-w-0">
+                    <div className="text-sm text-white">
+                      <span className="font-medium">
+                        {entry.actor?.name || 'Unknown'}
+                      </span>
+                      {' '}
+                      <span className="text-slate-400">
+                        {entry.action_type.replace(/_/g, ' ')}
+                      </span>
+                      {entityTitle && (
+                        <>
+                          {' '}
+                          <span className="text-slate-300">
+                            "{entityTitle}"
+                          </span>
+                        </>
+                      )}
+                    </div>
+                    <div className="text-xs text-slate-500 mt-1">
+                      {new Date(entry.created_at).toLocaleString()}
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
-          ))}
+            )
+          })}
         </div>
       )}
     </div>
