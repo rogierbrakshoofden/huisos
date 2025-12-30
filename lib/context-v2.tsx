@@ -220,7 +220,7 @@ export function selectTasksForUser(state: AppState): Task[] {
     return state.tasks
   }
   return state.tasks.filter(task =>
-    task.assignee_ids.includes(state.activeUserId as string)
+    task.assigned_to === state.activeUserId
   )
 }
 
