@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react'
-import { X, ChevronDown, Trash2, GripVertical, Plus } from 'lucide-react'
-import { Task, FamilyMember, Frequency, Subtask } from '@/types/huisos-v2'
+import { X, ChevronDown, Trash2, GripVertical, Plus, Check } from 'lucide-react'
+import { Task, FamilyMember, Frequency, Subtask, RecurrenceType } from '@/types/huisos-v2'
 import { FamilyMemberCircle } from '@/components/family-member-circle'
+import { shouldShowRotation, validateRotationConfig } from '@/lib/rotation-utils'
 
 interface TaskModalProps {
   task?: Task | null
@@ -26,6 +27,9 @@ export function TaskModal({
   const [assigneeIds, setAssigneeIds] = useState<string[]>([])
   const [dueDate, setDueDate] = useState('')
   const [note, setNote] = useState('')
+  const [recurrenceType, setRecurrenceType] = useState<RecurrenceType>('once')
+  const [rotationEnabled, setRotationEnabled] = useState(false)
+  const [rotationExcludeIds, setRotationExcludeIds] = useState<string[]>([])
   const [isSaving, setIsSaving] = useState(false)
   const [errors, setErrors] = useState<Record<string, string>>({})
   
@@ -40,9 +44,19 @@ export function TaskModal({
   useEffect(() => {
     if (task) {
       setTitle(task.title)
-      setAssigneeIds(task.assigned_to ? [task.assigned_to] : [])
+      // Handle both legacy string and new array format
+      if (Array.isArray(task.assigned_to)) {
+        setAssigneeIds(task.assigned_to)
+      } else if (task.assigned_to) {
+        setAssigneeIds([task.assigned_to])
+      } else {
+        setAssigneeIds([])
+      }
       setDueDate(task.due_date || '')
       setNote(task.note || '')
+      setRecurrenceType(task.recurrence_type || 'once')
+      setRotationEnabled(task.rotation_enabled || false)
+      setRotationExcludeIds(task.rotation_exclude_ids || [])
       
       // Load subtasks if editing existing task
       if (task.id) {
@@ -54,6 +68,9 @@ export function TaskModal({
       setAssigneeIds([])
       setDueDate('')
       setNote('')
+      setRecurrenceType('once')
+      setRotationEnabled(false)
+      setRotationExcludeIds([])
       setSubtasks([])
     }
     setErrors({})
@@ -93,6 +110,14 @@ export function TaskModal({
       today.setHours(0, 0, 0, 0)
       if (dueDateObj < today) {
         newErrors.dueDate = 'Due date cannot be in the past'
+      }
+    }
+
+    // Validate rotation configuration
+    if (rotationEnabled) {
+      const rotationError = validateRotationConfig(assigneeIds, rotationExcludeIds)
+      if (rotationError) {
+        newErrors.rotation = rotationError
       }
     }
 
@@ -172,15 +197,26 @@ export function TaskModal({
 
     setIsSaving(true)
     try {
-      // Map to actual schema: assigned_to is a single string (first assignee), not an array
-      const assignedTo = assigneeIds.length > 0 ? assigneeIds[0] : null
-
-      await onSave({
+      const taskData: Partial<Task> = {
         title: title.trim(),
-        assigned_to: assignedTo || undefined,
+        assigned_to: assigneeIds,
         due_date: dueDate || undefined,
         note: note.trim() || undefined,
-      })
+        recurrence_type: recurrenceType,
+      }
+
+      // Only include rotation fields if enabled
+      if (rotationEnabled && recurrenceType === 'repeating') {
+        taskData.rotation_enabled = true
+        taskData.rotation_exclude_ids = rotationExcludeIds
+        taskData.rotation_index = task?.rotation_index ?? 0
+      } else {
+        taskData.rotation_enabled = false
+        taskData.rotation_exclude_ids = []
+        taskData.rotation_index = 0
+      }
+
+      await onSave(taskData)
       onClose()
     } catch (err) {
       setErrors({ submit: (err as Error).message })
@@ -205,14 +241,47 @@ export function TaskModal({
   }
 
   const toggleAssignee = (memberId: string) => {
-    setAssigneeIds(prev =>
+    setAssigneeIds(prev => {
+      const newIds = prev.includes(memberId)
+        ? prev.filter(id => id !== memberId)
+        : [...prev, memberId]
+      
+      // If we're removing the last eligible assignee from rotation, disable rotation
+      if (rotationEnabled) {
+        const remainingEligible = newIds.filter(
+          id => !rotationExcludeIds.includes(id)
+        )
+        if (remainingEligible.length === 0) {
+          setRotationEnabled(false)
+        }
+      }
+      
+      return newIds
+    })
+    if (errors.assignees) {
+      setErrors(prev => ({ ...prev, assignees: '' }))
+    }
+  }
+
+  const toggleRotationExclude = (memberId: string) => {
+    setRotationExcludeIds(prev =>
       prev.includes(memberId)
         ? prev.filter(id => id !== memberId)
         : [...prev, memberId]
     )
-    if (errors.assignees) {
-      setErrors(prev => ({ ...prev, assignees: '' }))
-    }
+  }
+
+  const showRotationControls = shouldShowRotation({
+    recurrence_type: recurrenceType,
+    assigned_to: assigneeIds,
+  })
+
+  const getCurrentRotationAssignee = () => {
+    if (!task || !rotationEnabled || assigneeIds.length === 0) return null
+    const rotationIndex = task.rotation_index ?? 0
+    const safeIndex = Math.min(rotationIndex, assigneeIds.length - 1)
+    const assigneeId = assigneeIds[safeIndex]
+    return familyMembers.find(m => m.id === assigneeId)
   }
 
   if (!isOpen) return null
@@ -267,38 +336,150 @@ export function TaskModal({
             <label className="block text-sm font-medium text-slate-300 mb-3">
               Assign to <span className="text-red-400">*</span>
             </label>
-            <div className="space-y-2">
-              {familyMembers.map(member => (
-                <button
-                  key={member.id}
-                  onClick={() => toggleAssignee(member.id)}
-                  className={`w-full flex items-center gap-3 p-3 rounded-lg border-2 transition-all ${
-                    assigneeIds.includes(member.id)
-                      ? 'bg-slate-700 border-slate-600'
-                      : 'bg-slate-800 border-slate-700 hover:border-slate-600'
-                  }`}
-                >
-                  <input
-                    type="checkbox"
-                    checked={assigneeIds.includes(member.id)}
-                    readOnly
-                    className="w-5 h-5 cursor-pointer"
-                  />
-                  <FamilyMemberCircle
-                    initials={member.initials}
-                    color={member.color}
-                    size="sm"
-                  />
-                  <span className="text-white font-medium flex-1 text-left">
-                    {member.name}
-                  </span>
-                </button>
-              ))}
+            <div className="grid grid-cols-2 gap-2">
+              {familyMembers.map(member => {
+                const isSelected = assigneeIds.includes(member.id)
+                return (
+                  <button
+                    key={member.id}
+                    type="button"
+                    onClick={() => toggleAssignee(member.id)}
+                    className={`p-3 rounded-lg border-2 flex items-center gap-2 transition-all ${
+                      isSelected
+                        ? 'border-blue-500 bg-blue-500/20'
+                        : 'border-slate-700 bg-slate-800/50 hover:border-slate-600'
+                    }`}
+                  >
+                    <div
+                      className="w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm"
+                      style={{ backgroundColor: member.color }}
+                    >
+                      {member.initials}
+                    </div>
+                    <span className="text-sm font-medium text-white flex-1 text-left">
+                      {member.name}
+                    </span>
+                    {isSelected && (
+                      <Check className="w-5 h-5 text-blue-400" />
+                    )}
+                  </button>
+                )
+              })}
             </div>
             {errors.assignees && (
               <p className="text-red-400 text-sm mt-2">{errors.assignees}</p>
             )}
           </div>
+
+          {/* Recurrence Type */}
+          <div>
+            <label className="block text-sm font-medium text-slate-300 mb-2">
+              Recurrence
+            </label>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setRecurrenceType('once')
+                  setRotationEnabled(false)
+                }}
+                className={`flex-1 px-4 py-2 rounded-lg border-2 transition-all ${
+                  recurrenceType === 'once'
+                    ? 'border-blue-500 bg-blue-500/20 text-white'
+                    : 'border-slate-700 bg-slate-800 text-slate-400 hover:border-slate-600'
+                }`}
+              >
+                Once
+              </button>
+              <button
+                type="button"
+                onClick={() => setRecurrenceType('repeating')}
+                className={`flex-1 px-4 py-2 rounded-lg border-2 transition-all ${
+                  recurrenceType === 'repeating'
+                    ? 'border-blue-500 bg-blue-500/20 text-white'
+                    : 'border-slate-700 bg-slate-800 text-slate-400 hover:border-slate-600'
+                }`}
+              >
+                Repeating
+              </button>
+            </div>
+          </div>
+
+          {/* Rotation Configuration */}
+          {showRotationControls && (
+            <div className="border-t border-slate-700 pt-5 space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <label className="text-sm font-medium text-slate-300">
+                    Rotate through assignees
+                  </label>
+                  <p className="text-xs text-slate-500 mt-1">
+                    Auto-assign next person when completed
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setRotationEnabled(!rotationEnabled)}
+                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                    rotationEnabled ? 'bg-blue-600' : 'bg-slate-700'
+                  }`}
+                >
+                  <span
+                    className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                      rotationEnabled ? 'translate-x-6' : 'translate-x-1'
+                    }`}
+                  />
+                </button>
+              </div>
+
+              {rotationEnabled && (
+                <div className="space-y-3">
+                  <label className="text-sm font-medium text-slate-400">
+                    Exclude from rotation:
+                  </label>
+                  <div className="space-y-2">
+                    {assigneeIds.map(memberId => {
+                      const member = familyMembers.find(m => m.id === memberId)
+                      if (!member) return null
+                      const isExcluded = rotationExcludeIds.includes(memberId)
+                      return (
+                        <label
+                          key={memberId}
+                          className="flex items-center gap-3 p-2 rounded-lg hover:bg-slate-800 cursor-pointer"
+                        >
+                          <input
+                            type="checkbox"
+                            checked={isExcluded}
+                            onChange={() => toggleRotationExclude(memberId)}
+                            className="w-4 h-4 cursor-pointer"
+                          />
+                          <div
+                            className="w-6 h-6 rounded-full flex items-center justify-center font-bold text-xs"
+                            style={{ backgroundColor: member.color }}
+                          >
+                            {member.initials}
+                          </div>
+                          <span className="text-sm text-slate-300">
+                            {member.name}
+                          </span>
+                        </label>
+                      )
+                    })}
+                  </div>
+                  
+                  {task && rotationEnabled && (
+                    <p className="text-xs text-slate-500 italic">
+                      Currently: {getCurrentRotationAssignee()?.name || 'Unknown'} is up next
+                    </p>
+                  )}
+                  
+                  {errors.rotation && (
+                    <p className="text-red-400 text-sm">{errors.rotation}</p>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Due Date */}
           <div>
@@ -334,7 +515,7 @@ export function TaskModal({
             />
           </div>
 
-          {/* Subtasks Section - Always show, but with different message for new tasks */}
+          {/* Subtasks Section */}
           <div className="border-t border-slate-700 pt-5">
             <div className="flex items-center justify-between mb-3">
               <h3 className="text-sm font-semibold text-slate-300">Subtasks</h3>
