@@ -12,13 +12,14 @@ import { useModalState } from '@/lib/hooks/useModalState'
 import { UserSwitcher } from '@/components/user-switcher'
 import { BottomNav } from '@/components/bottom-nav'
 import { AddButton } from '@/components/add-button'
-import { TaskListItem } from '@/components/task-list-item'
 import { TaskModal } from '@/components/task-modal'
 import { EventModal } from '@/components/event-modal'
-import { TokenWidget } from '@/components/token-widget'
 import { RewardStoreModal } from '@/components/reward-store-modal'
 import { MyRewardsTab } from '@/components/my-rewards-tab'
 import { StatsTab } from '@/components/stats-tab'
+import { WorkTab } from '@/components/tabs/WorkTab'
+import { EventsTab } from '@/components/tabs/EventsTab'
+import { ActivityLogTab } from '@/components/tabs/ActivityLogTab'
 import { DiagnosticsFooter } from '@/components/diagnostics-footer'
 import { Task, Event } from '@/types/huisos-v2'
 
@@ -99,11 +100,6 @@ function V3DashboardContent() {
     )
   }
 
-  const getTaskAssignees = (task: Task) => {
-    if (!task.assigned_to) return []
-    return state.familyMembers.filter((m) => m.id === task.assigned_to)
-  }
-
   const getTokenBalance = (memberId: string) => {
     return state.tokens
       .filter((t) => t.member_id === memberId)
@@ -149,83 +145,27 @@ function V3DashboardContent() {
         </div>
 
         {activeTab === 'work' && (
-          <div className="space-y-4">
-            {tasks.length === 0 ? (
-              <div className="text-center py-12">
-                <p className="text-slate-400 mb-4">No tasks</p>
-                <button
-                  onClick={modalState.handleOpenNewTask}
-                  className="px-4 py-2 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 transition-colors"
-                >
-                  + Add Task
-                </button>
-              </div>
-            ) : (
-              <div className="space-y-3">
-                {tasks.map((task) => (
-                  <TaskListItem
-                    key={task.id}
-                    task={task}
-                    subtasks={state.subtasks.get(task.id) || []}
-                    assignees={getTaskAssignees(task)}
-                    onComplete={taskHandlers.handleCompleteTask}
-                    onEdit={modalState.handleEditTask}
-                    onDelete={taskHandlers.handleDeleteTask}
-                    onToggleSubtask={taskHandlers.handleToggleSubtask}
-                    currentUserId={currentUserId}
-                  />
-                ))}
-              </div>
-            )}
-
-            <div className="mt-6 space-y-3">
-              <TokenWidget
-                familyMembers={state.familyMembers}
-                tokens={state.tokens}
-              />
-              <button
-                onClick={() => modalState.setIsRewardStoreOpen(true)}
-                className="w-full px-4 py-3 rounded-lg bg-amber-600/20 border border-amber-600/50 text-amber-300 hover:bg-amber-600/30 transition-colors text-sm font-medium"
-              >
-                🎁 Visit Reward Store
-              </button>
-            </div>
-          </div>
+          <WorkTab
+            tasks={tasks}
+            familyMembers={state.familyMembers}
+            tokens={state.tokens}
+            subtasksMap={state.subtasks}
+            currentUserId={currentUserId}
+            onComplete={taskHandlers.handleCompleteTask}
+            onEdit={modalState.handleEditTask}
+            onDelete={taskHandlers.handleDeleteTask}
+            onToggleSubtask={taskHandlers.handleToggleSubtask}
+            onOpenNewTask={modalState.handleOpenNewTask}
+            onOpenRewardStore={() => modalState.setIsRewardStoreOpen(true)}
+          />
         )}
 
         {activeTab === 'events' && (
-          <div className="space-y-4">
-            {events.length === 0 ? (
-              <div className="text-center py-12">
-                <p className="text-slate-400 mb-4">No events</p>
-                <button
-                  onClick={modalState.handleOpenNewEvent}
-                  className="px-4 py-2 rounded-lg bg-slate-700 text-white hover:bg-slate-600 transition-colors"
-                >
-                  + Add Event
-                </button>
-              </div>
-            ) : (
-              <div className="space-y-3">
-                {events.map((event) => (
-                  <div
-                    key={event.id}
-                    className="bg-slate-800/60 border border-slate-700/50 rounded-lg p-4 hover:bg-slate-800/80 transition-all duration-200 cursor-pointer"
-                    onClick={() => modalState.handleEditEvent(event)}
-                  >
-                    <div className="font-medium text-white mb-1">
-                      {event.title}
-                    </div>
-                    <div className="text-sm text-slate-400">
-                      {event.all_day
-                        ? new Date(event.datetime || '').toLocaleDateString()
-                        : new Date(event.datetime || '').toLocaleString()}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
+          <EventsTab
+            events={events}
+            onEdit={modalState.handleEditEvent}
+            onOpenNewEvent={modalState.handleOpenNewEvent}
+          />
         )}
 
         {activeTab === 'stats' && (
@@ -249,42 +189,14 @@ function V3DashboardContent() {
         )}
 
         {activeTab === 'log' && (
-          <div className="space-y-4">
-            {state.activityLog.length === 0 ? (
-              <div className="text-center py-12">
-                <p className="text-slate-400">No activity yet</p>
-              </div>
-            ) : (
-              <div className="space-y-2">
-                {state.activityLog.slice(0, 50).map((entry) => (
-                  <div
-                    key={entry.id}
-                    className="bg-slate-800/60 border border-slate-700/50 rounded-lg p-4"
-                  >
-                    <div className="flex items-start gap-3">
-                      <div className="w-8 h-8 rounded-full bg-slate-700 flex items-center justify-center flex-shrink-0 text-xs font-bold text-white">
-                        {entry.actor?.initials || '?'}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="text-sm text-white">
-                          <span className="font-medium">
-                            {entry.actor?.name || 'Unknown'}
-                          </span>
-                          {' '}
-                          <span className="text-slate-400">
-                            {entry.action_type.replace(/_/g, ' ')}
-                          </span>
-                        </div>
-                        <div className="text-xs text-slate-500 mt-1">
-                          {new Date(entry.created_at).toLocaleString()}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
+          <ActivityLogTab
+            activityLog={state.activityLog}
+            tasks={tasks}
+            events={events}
+            subtasksMap={state.subtasks}
+            onTaskEdit={modalState.handleEditTask}
+            onEventEdit={modalState.handleEditEvent}
+          />
         )}
       </main>
 
