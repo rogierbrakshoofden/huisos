@@ -17,7 +17,7 @@ export type Frequency = 'daily' | 'every_two_days' | 'weekly' | 'monthly' | 'yea
 export interface Task {
   id: string
   title: string
-  assigned_to?: string
+  assigned_to: string[] // Updated: now array of member IDs
   completed: boolean
   completed_at?: string
   completed_by?: string
@@ -28,6 +28,11 @@ export interface Task {
   created_at: string
   updated_at: string
   subtasks?: Subtask[]
+  // Rotation fields
+  recurrence_type?: RecurrenceType
+  rotation_enabled?: boolean
+  rotation_index?: number
+  rotation_exclude_ids?: string[]
 }
 
 export interface Subtask {
@@ -74,6 +79,8 @@ export type ActionType =
   | 'task_delegated'
   | 'delegation_accepted'
   | 'delegation_declined'
+  | 'task_rotated'
+  | 'assignees_updated'
 
 export type EntityType = 'task' | 'subtask' | 'event'
 
