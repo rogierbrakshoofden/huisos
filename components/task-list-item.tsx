@@ -118,6 +118,13 @@ export function TaskListItem({
 
           {/* Metadata */}
           <div className="flex items-center gap-2 mt-1 text-xs text-slate-400 flex-wrap">
+            {/* Recurrence badge */}
+            {task.recurrence_type === 'repeating' && (
+              <span className="px-2 py-0.5 rounded-full bg-slate-700/50 text-slate-300">
+                {task.frequency || 'Repeating'}
+              </span>
+            )}
+
             {/* Due date */}
             {task.due_date && (
               <span
@@ -133,6 +140,13 @@ export function TaskListItem({
                 `}
               >
                 {daysUntilDue === 0 ? 'Due today' : `Due in ${daysUntilDue} days`}
+              </span>
+            )}
+
+            {/* Token value */}
+            {task.token_value > 0 && (
+              <span className="px-2 py-0.5 rounded-full bg-amber-900/50 text-amber-200">
+                +{task.token_value} 🎫
               </span>
             )}
           </div>
