@@ -74,7 +74,7 @@ export default async function handler(
       // Handle array or string, convert to array
       let assignedToArray: string[] = []
       if (Array.isArray(updateData.assigned_to)) {
-        assignedToArray = updateData.assigned_to.filter(id => id && id.trim())
+        assignedToArray = updateData.assigned_to.filter((id: string) => id && id.trim())
       } else if (typeof updateData.assigned_to === 'string') {
         assignedToArray = [updateData.assigned_to]
       }
@@ -87,11 +87,11 @@ export default async function handler(
       updates.assigned_to = assignedToArray
       
       // Track assignee changes for activity log
-      const originalIds = Array.isArray(originalTask.assigned_to) 
+      const originalIds: string[] = Array.isArray(originalTask.assigned_to) 
         ? originalTask.assigned_to 
         : originalTask.assigned_to ? [originalTask.assigned_to] : []
-      const added = assignedToArray.filter(id => !originalIds.includes(id))
-      const removed = originalIds.filter(id => !assignedToArray.includes(id))
+      const added: string[] = assignedToArray.filter((id: string) => !originalIds.includes(id))
+      const removed: string[] = originalIds.filter((id: string) => !assignedToArray.includes(id))
       
       if (added.length > 0 || removed.length > 0) {
         updateData._assigneeChanges = { added, removed }
