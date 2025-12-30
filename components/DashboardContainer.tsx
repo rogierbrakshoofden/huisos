@@ -41,16 +41,16 @@ export function DashboardContainer() {
     dispatch({ type: 'SET_ACTIVE_USER', payload: userId })
   }
 
-  // Wrapper functions for modal handlers
-  const handleSaveTask = async (taskData: Partial<Task>) => {
+  // Wrapper functions for modal handlers - ALL return Promise<void>
+  const handleSaveTask = async (taskData: Partial<Task>): Promise<void> => {
     await taskHandlers.handleSaveTask(taskData, modalState.editingTask)
   }
 
-  const handleSaveEvent = async (eventData: Partial<Event>) => {
+  const handleSaveEvent = async (eventData: Partial<Event>): Promise<void> => {
     await eventHandlers.handleSaveEvent(eventData, modalState.editingEvent)
   }
 
-  const handleRedeemReward = async (rewardId: string) => {
+  const handleRedeemReward = async (rewardId: string): Promise<void> => {
     const success = await rewardHandlers.handleRedeemReward(rewardId)
     if (success) {
       modalState.setIsRewardStoreOpen(false)
@@ -88,17 +88,17 @@ export function DashboardContainer() {
       setActiveTab={setActiveTab}
       switchUser={switchUser}
       
-      // Task handlers
+      // Task handlers - ALL async returning Promise<void>
       onCompleteTask={taskHandlers.handleCompleteTask}
       onDeleteTask={taskHandlers.handleDeleteTask}
       onToggleSubtask={taskHandlers.handleToggleSubtask}
       onSaveTask={handleSaveTask}
       
-      // Event handlers
+      // Event handlers - ALL async returning Promise<void>
       onSaveEvent={handleSaveEvent}
       onDeleteEvent={eventHandlers.handleDeleteEvent}
       
-      // Reward handlers
+      // Reward handlers - ALL async returning Promise<void>
       onRedeemReward={handleRedeemReward}
       onApproveRewardClaim={rewardHandlers.handleApproveRewardClaim}
       onClaimReward={rewardHandlers.handleClaimReward}
