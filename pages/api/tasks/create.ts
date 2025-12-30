@@ -6,11 +6,8 @@ import { Task } from '@/types/huisos-v2'
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
 
-// Validate environment variables at startup
 if (!supabaseUrl || !supabaseServiceKey) {
-  console.error('❌ Missing Supabase environment variables in /api/tasks/create')
-  console.error('  NEXT_PUBLIC_SUPABASE_URL:', supabaseUrl ? '✓' : '✗ MISSING')
-  console.error('  SUPABASE_SERVICE_ROLE_KEY:', supabaseServiceKey ? '✓' : '✗ MISSING')
+  console.error('❌ Missing Supabase env vars in /api/tasks/create')
 }
 
 const supabase = createClient<Database>(
@@ -20,13 +17,9 @@ const supabase = createClient<Database>(
 
 interface CreateTaskRequest {
   title: string
-  description?: string
-  assignee_ids: string[]
-  recurrence_type: 'once' | 'repeating'
-  frequency?: 'daily' | 'every_two_days' | 'weekly' | 'monthly' | 'yearly'
+  assigned_to?: string | string[]
   due_date?: string
-  token_value: number
-  notes?: string
+  note?: string
   created_by: string
 }
 
@@ -39,51 +32,40 @@ export default async function handler(
   }
 
   try {
-    // Check environment variables before processing
     if (!supabaseUrl || !supabaseServiceKey) {
       return res.status(500).json({
         error: 'Server configuration error: Missing Supabase credentials. Contact admin.',
       })
     }
 
-    const {
-      title,
-      description,
-      assignee_ids,
-      recurrence_type,
-      frequency,
-      due_date,
-      token_value,
-      notes,
-      created_by,
-    }: CreateTaskRequest = req.body
+    const { title, assigned_to, due_date, note, created_by }: CreateTaskRequest = req.body
 
     // Validation
     if (!title?.trim()) {
       return res.status(400).json({ error: 'Title is required' })
     }
-    if (!assignee_ids || assignee_ids.length === 0) {
-      return res.status(400).json({ error: 'At least one assignee is required' })
-    }
     if (!created_by) {
       return res.status(400).json({ error: 'created_by is required' })
     }
 
-    // Insert task - cast payload to any
+    // Handle assigned_to: can be string or array, convert to single string
+    let assignedToValue: string | null = null
+    if (assigned_to) {
+      if (typeof assigned_to === 'string') {
+        assignedToValue = assigned_to
+      } else if (Array.isArray(assigned_to) && assigned_to.length > 0) {
+        assignedToValue = assigned_to[0]
+      }
+    }
+
+    // Insert task - only use columns that exist in schema
     const insertPayload: any = {
       title: title.trim(),
-      description: description?.trim() || null,
-      assignee_ids,
-      recurrence_type,
-      frequency: recurrence_type === 'repeating' ? frequency : null,
-      due_date: recurrence_type === 'once' ? due_date : null,
-      token_value,
-      notes: notes?.trim() || null,
+      assigned_to: assignedToValue,
+      due_date: due_date || null,
+      note: note?.trim() || null,
       created_by,
       completed: false,
-      rotation_enabled: false,
-      rotation_index: 0,
-      rotation_exclude_ids: [],
     }
 
     const result: any = await (supabase as any)
@@ -110,8 +92,6 @@ export default async function handler(
       entity_id: task.id,
       metadata: {
         title: task.title,
-        token_value: task.token_value,
-        recurrence_type: task.recurrence_type,
       },
     } as any)
 
