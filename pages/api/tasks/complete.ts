@@ -3,10 +3,17 @@ import { createClient } from '@supabase/supabase-js'
 import type { Database } from '@/types/database'
 import { Task } from '@/types/huisos-v2'
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
 
-const supabase = createClient<Database>(supabaseUrl, supabaseServiceKey)
+if (!supabaseUrl || !supabaseServiceKey) {
+  console.error('❌ Missing Supabase env vars in /api/tasks/complete')
+}
+
+const supabase = createClient<Database>(
+  supabaseUrl || '',
+  supabaseServiceKey || ''
+)
 
 interface CompleteTaskRequest {
   taskId: string
@@ -22,6 +29,12 @@ export default async function handler(
   }
 
   try {
+    if (!supabaseUrl || !supabaseServiceKey) {
+      return res.status(500).json({
+        error: 'Server configuration error: Missing Supabase credentials.',
+      })
+    }
+
     const { taskId, completedBy }: CompleteTaskRequest = req.body
 
     if (!taskId) {
@@ -42,7 +55,7 @@ export default async function handler(
     const fetchError = result.error
 
     if (fetchError || !taskData) {
-      console.error('Task fetch error:', fetchError)
+      console.error('❌ Task fetch error:', fetchError)
       return res.status(404).json({ error: 'Task not found' })
     }
 
@@ -69,8 +82,10 @@ export default async function handler(
     const updateError = updateResult.error
 
     if (updateError || !updatedTask) {
-      console.error('Task update error:', updateError)
-      return res.status(500).json({ error: 'Failed to complete task' })
+      console.error('❌ Task update error:', updateError)
+      return res.status(500).json({
+        error: updateError?.message || 'Failed to complete task',
+      })
     }
 
     // Award tokens if task has a token value
@@ -87,7 +102,7 @@ export default async function handler(
         .single()
 
       if (tokenError) {
-        console.error('Token insert error:', tokenError)
+        console.error('⚠️ Token insert error:', tokenError)
         // Continue anyway - token awarding failure shouldn't break completion
       }
     }
@@ -132,18 +147,23 @@ export default async function handler(
           })
 
           if (!rotateRes.ok) {
-            console.warn('Rotation failed:', await rotateRes.text())
+            console.warn('⚠️ Rotation failed:', await rotateRes.text())
             // Don't fail the completion, just warn
           }
         } catch (err) {
-          console.warn('Rotation error:', err)
+          console.warn('⚠️ Rotation error:', err)
         }
       }
     }
 
     return res.status(200).json(updatedTask as Task)
   } catch (err) {
-    console.error('API error:', err)
-    return res.status(500).json({ error: 'Internal server error' })
+    console.error('❌ API error in /api/tasks/complete:', err)
+    return res.status(500).json({
+      error:
+        err instanceof Error
+          ? err.message
+          : 'Internal server error',
+    })
   }
 }
