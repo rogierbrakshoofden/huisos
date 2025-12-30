@@ -237,11 +237,8 @@ function V2DashboardContent() {
           throw new Error(error.error || 'Failed to update event')
         }
 
-        const updatedEvent = await response.json()
-        dispatch({
-          type: 'UPDATE_EVENT',
-          payload: updatedEvent as Event,
-        })
+        await response.json()
+        // Let realtime sync handle the update to prevent duplicates
         toast('Event updated ✓', 'success')
       } else {
         // Create new event
@@ -259,11 +256,8 @@ function V2DashboardContent() {
           throw new Error(error.error || 'Failed to create event')
         }
 
-        const newEvent = await response.json()
-        dispatch({
-          type: 'ADD_EVENT',
-          payload: newEvent as Event,
-        })
+        await response.json()
+        // Let realtime sync handle the creation to prevent duplicates
         toast('Event created ✓', 'success')
       }
     } catch (err) {
