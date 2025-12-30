@@ -42,7 +42,6 @@ export default async function handler(
     if (member_ids !== undefined) updates.member_ids = member_ids
     if (recurring !== undefined) updates.recurring = recurring
     if (notes !== undefined) updates.notes = notes?.trim() || null
-    updates.updated_at = new Date().toISOString()
 
     // Update event - cast entire result to any
     const result: any = await (supabase as any)
