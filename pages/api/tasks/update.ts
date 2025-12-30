@@ -3,10 +3,17 @@ import { createClient } from '@supabase/supabase-js'
 import type { Database } from '@/types/database'
 import { Task } from '@/types/huisos-v2'
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
 
-const supabase = createClient<Database>(supabaseUrl, supabaseServiceKey)
+if (!supabaseUrl || !supabaseServiceKey) {
+  console.error('❌ Missing Supabase env vars in /api/tasks/update')
+}
+
+const supabase = createClient<Database>(
+  supabaseUrl || '',
+  supabaseServiceKey || ''
+)
 
 interface UpdateTaskRequest {
   taskId: string
@@ -30,6 +37,12 @@ export default async function handler(
   }
 
   try {
+    if (!supabaseUrl || !supabaseServiceKey) {
+      return res.status(500).json({
+        error: 'Server configuration error: Missing Supabase credentials.',
+      })
+    }
+
     const { taskId, ...updateData }: UpdateTaskRequest = req.body
 
     if (!taskId) {
@@ -89,8 +102,10 @@ export default async function handler(
     const taskError = result.error
 
     if (taskError || !task) {
-      console.error('Task update error:', taskError)
-      return res.status(500).json({ error: 'Failed to update task' })
+      console.error('❌ Task update error:', taskError)
+      return res.status(500).json({
+        error: taskError?.message || 'Failed to update task',
+      })
     }
 
     // Log activity
@@ -108,7 +123,12 @@ export default async function handler(
 
     return res.status(200).json(task as Task)
   } catch (err) {
-    console.error('API error:', err)
-    return res.status(500).json({ error: 'Internal server error' })
+    console.error('❌ API error in /api/tasks/update:', err)
+    return res.status(500).json({
+      error:
+        err instanceof Error
+          ? err.message
+          : 'Internal server error',
+    })
   }
 }
