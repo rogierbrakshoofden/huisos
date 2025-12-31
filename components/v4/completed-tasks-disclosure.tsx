@@ -54,15 +54,13 @@ export function CompletedTasksDisclosure({
             <div key={task.id} className="opacity-60">
               <TaskListItem
                 task={task}
-                assignees={task.assignee_ids?.map((id) =>
-                  familyMembers.find((m) => m.id === id)
-                ) || []}
+                familyMembers={familyMembers}
                 subtasks={subtasksMap[task.id] || []}
                 onEdit={onEdit}
                 onDelete={onDelete}
-                onComplete={async () => {}} // No-op for completed tasks
+                onComplete={() => {}} // No-op for completed tasks
                 onToggleSubtask={onToggleSubtask}
-                isCompleted={true}
+                currentUserId={currentUserId}
               />
             </div>
           ))}
