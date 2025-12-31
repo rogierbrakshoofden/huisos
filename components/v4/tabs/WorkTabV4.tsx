@@ -66,14 +66,13 @@ export function WorkTabV4({
               <TaskListItem
                 key={task.id}
                 task={task}
-                assignees={task.assignee_ids?.map((id) =>
-                  familyMembers.find((m) => m.id === id)
-                ) || []}
+                familyMembers={familyMembers}
                 subtasks={subtasksMap[task.id] || []}
                 onEdit={onEdit}
                 onDelete={onDelete}
                 onComplete={onComplete}
                 onToggleSubtask={onToggleSubtask}
+                currentUserId={currentUserId}
               />
             ))}
           </div>
