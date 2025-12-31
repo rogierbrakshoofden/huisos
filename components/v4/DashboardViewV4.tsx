@@ -108,6 +108,17 @@ export function DashboardViewV4({
     )
   }
 
+  // Convert Map to Record for subtasks
+  const subtasksRecord: Record<string, any[]> = {}
+  if (state.subtasks instanceof Map) {
+    state.subtasks.forEach((value, key) => {
+      subtasksRecord[key] = value
+    })
+  } else {
+    // If it's already a Record, use it directly
+    Object.assign(subtasksRecord, state.subtasks)
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 scroll-smooth">
       {/* Header with centered brand */}
@@ -135,7 +146,7 @@ export function DashboardViewV4({
             tasks={tasks}
             familyMembers={state.familyMembers}
             tokens={state.tokens}
-            subtasksMap={state.subtasks}
+            subtasksMap={subtasksRecord}
             currentUserId={currentUserId}
             onComplete={onCompleteTask}
             onEdit={modalState.handleEditTask}
@@ -179,7 +190,7 @@ export function DashboardViewV4({
             activityLog={state.activityLog}
             tasks={tasks}
             events={events}
-            subtasksMap={state.subtasks}
+            subtasksMap={subtasksRecord}
             onTaskEdit={modalState.handleEditTask}
             onEventEdit={modalState.handleEditEvent}
           />
