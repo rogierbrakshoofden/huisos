@@ -24,7 +24,6 @@ interface DashboardViewV4Props {
   isOnline: boolean
   syncError?: string
   lastSyncedAt?: Date
-  isSyncing?: boolean
 
   // Modal state
   modalState: {
@@ -82,7 +81,6 @@ export function DashboardViewV4({
   isOnline,
   syncError,
   lastSyncedAt,
-  isSyncing,
   modalState,
   setActiveTab,
   switchUser,
@@ -205,7 +203,6 @@ export function DashboardViewV4({
         isOnline={isOnline}
         lastSyncedAt={lastSyncedAt}
         syncError={syncError}
-        isSyncing={isSyncing}
       />
 
       {/* Modals */}

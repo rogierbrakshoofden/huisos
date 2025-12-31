@@ -4,7 +4,6 @@ interface SyncIndicatorV4Props {
   isOnline: boolean
   lastSyncedAt?: Date
   syncError?: string
-  isSyncing?: boolean
 }
 
 function formatRelativeTime(date: Date): string {
@@ -23,19 +22,18 @@ export function SyncIndicatorV4({
   isOnline,
   lastSyncedAt,
   syncError,
-  isSyncing = false,
 }: SyncIndicatorV4Props) {
   const [isVisible, setIsVisible] = useState(true)
 
-  // Auto-hide after 2s when online + no error + not syncing
+  // Auto-hide after 2s when online + no error
   useEffect(() => {
-    if (isOnline && !syncError && !isSyncing && lastSyncedAt) {
+    if (isOnline && !syncError && lastSyncedAt) {
       const timer = setTimeout(() => setIsVisible(false), 2000)
       return () => clearTimeout(timer)
     } else {
       setIsVisible(true)
     }
-  }, [isOnline, syncError, lastSyncedAt, isSyncing])
+  }, [isOnline, syncError, lastSyncedAt])
 
   if (!isVisible) return null
 
@@ -51,11 +49,6 @@ export function SyncIndicatorV4({
           <div className="flex items-center gap-2 text-slate-400 text-xs">
             <div className="w-2 h-2 rounded-full bg-red-400" />
             <span>Offline • Using cached data</span>
-          </div>
-        ) : isSyncing ? (
-          <div className="flex items-center gap-2 text-yellow-400 text-xs">
-            <div className="w-2 h-2 rounded-full bg-yellow-400 animate-pulse" />
-            <span>Syncing...</span>
           </div>
         ) : lastSyncedAt ? (
           <div className="flex items-center gap-2 text-emerald-400 text-xs">

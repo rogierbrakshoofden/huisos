@@ -12,7 +12,7 @@ import { Task, Event } from '@/types/huisos-v2'
 
 export function DashboardContainerV4() {
   const { state, dispatch } = useApp()
-  const { isLoading, isOnline, syncError, lastSyncedAt, isSyncing } = useRealtimeSync()
+  const { isLoading, isOnline, syncError, lastSyncedAt } = useRealtimeSync()
   const { toasts, toast, setToasts } = useToast()
   const tasks = selectTasksForUser(state)
   const events = selectEventsForUser(state)
@@ -81,7 +81,6 @@ export function DashboardContainerV4() {
       isOnline={isOnline}
       syncError={syncError}
       lastSyncedAt={lastSyncedAt}
-      isSyncing={isSyncing}
 
       // Modal state
       modalState={modalState}
