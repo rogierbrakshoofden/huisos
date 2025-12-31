@@ -140,9 +140,11 @@ export function useRealtimeSync() {
           }
         }
       )
-      .subscribe()
+      .subscribe((status) => {
+        console.log('Tasks subscription status:', status)
+      })
 
-    // Subscribe to subtask changes
+    // Subscribe to subtask changes - FIXED VERSION
     const subtasksSub = supabase
       .channel('subtasks')
       .on(
@@ -153,14 +155,32 @@ export function useRealtimeSync() {
           table: 'subtasks',
         },
         async (payload) => {
+          console.log('Subtask change detected:', payload.eventType, payload)
           try {
-            const parentTaskId = (payload.new as Subtask)?.parent_task_id || (payload.old as Subtask)?.parent_task_id
-            const { data: subtasks } = await supabase
+            // Get parent_task_id from the payload
+            const parentTaskId = 
+              (payload.new as any)?.parent_task_id || 
+              (payload.old as any)?.parent_task_id
+            
+            if (!parentTaskId) {
+              console.error('No parent_task_id found in subtask payload')
+              return
+            }
+
+            // Refetch ALL subtasks for this task to ensure correct order
+            const { data: subtasks, error } = await supabase
               .from('subtasks')
               .select('*')
               .eq('parent_task_id', parentTaskId)
               .order('order_index', { ascending: true })
+            
+            if (error) {
+              console.error('Error fetching subtasks:', error)
+              return
+            }
+
             if (subtasks) {
+              console.log(`Dispatching ${subtasks.length} subtasks for task ${parentTaskId}`)
               dispatch({
                 type: 'REORDER_SUBTASKS',
                 payload: {
@@ -174,7 +194,14 @@ export function useRealtimeSync() {
           }
         }
       )
-      .subscribe()
+      .subscribe((status) => {
+        console.log('Subtasks subscription status:', status)
+        if (status === 'SUBSCRIBED') {
+          console.log('✓ Subtasks realtime subscription active')
+        } else if (status === 'CHANNEL_ERROR') {
+          console.error('✗ Subtasks subscription error - check Supabase Realtime settings')
+        }
+      })
 
     // Subscribe to events changes
     const eventsSub = supabase
@@ -200,7 +227,9 @@ export function useRealtimeSync() {
           }
         }
       )
-      .subscribe()
+      .subscribe((status) => {
+        console.log('Events subscription status:', status)
+      })
 
     // Subscribe to activity log
     const logSub = supabase
@@ -227,7 +256,9 @@ export function useRealtimeSync() {
           }
         }
       )
-      .subscribe()
+      .subscribe((status) => {
+        console.log('Activity log subscription status:', status)
+      })
 
     // Subscribe to reward claims changes
     const claimsSub = supabase
@@ -253,7 +284,9 @@ export function useRealtimeSync() {
           }
         }
       )
-      .subscribe()
+      .subscribe((status) => {
+        console.log('Reward claims subscription status:', status)
+      })
 
     subscriptionsRef.current = [
       () => tasksSub.unsubscribe(),
