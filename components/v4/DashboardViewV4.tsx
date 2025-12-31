@@ -117,11 +117,8 @@ export function DashboardViewV4({
         activeUserId={state.activeUserId}
         familyMembers={state.familyMembers}
         onUserChange={switchUser}
-        onAddClick={() => {
-          // Simple toggle between task and event for now
-          // We'll enhance this with the dropdown in the header
-          modalState.handleOpenNewTask()
-        }}
+        onTaskClick={modalState.handleOpenNewTask}
+        onEventClick={modalState.handleOpenNewEvent}
       />
 
       {/* Error notifications */}

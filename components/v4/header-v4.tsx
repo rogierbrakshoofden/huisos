@@ -6,14 +6,16 @@ interface HeaderV4Props {
   activeUserId: string | 'everybody'
   familyMembers: FamilyMember[]
   onUserChange: (userId: string | 'everybody') => void
-  onAddClick: () => void
+  onTaskClick: () => void
+  onEventClick: () => void
 }
 
 export function HeaderV4({
   activeUserId,
   familyMembers,
   onUserChange,
-  onAddClick,
+  onTaskClick,
+  onEventClick,
 }: HeaderV4Props) {
   const activeUser = familyMembers.find((m) => m.id === activeUserId)
 
@@ -32,7 +34,7 @@ export function HeaderV4({
         <h1 className="text-2xl font-bold text-white">HuisOS v4</h1>
 
         {/* Right: Add Button */}
-        <AddButtonV4 onClick={onAddClick} />
+        <AddButtonV4 onTaskClick={onTaskClick} onEventClick={onEventClick} />
       </div>
     </header>
   )
