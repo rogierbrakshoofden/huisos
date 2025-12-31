@@ -1,5 +1,3 @@
-// pages/v4.tsx
-'use client'
 import { useState, useEffect } from 'react'
 import { DashboardContainerV4 } from '@/components/v4/DashboardContainerV4'
 
@@ -8,7 +6,7 @@ export default function V4Dashboard() {
 
   useEffect(() => {
     setMounted(true)
-  }, [])
+  }, [mounted])
 
   if (!mounted) {
     return (
