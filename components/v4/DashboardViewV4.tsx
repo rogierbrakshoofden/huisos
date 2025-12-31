@@ -108,7 +108,7 @@ export function DashboardViewV4({
     )
   }
 
-  // Convert Map to Record for subtasks
+  // Convert Map to Record for WorkTabV4
   const subtasksRecord: Record<string, any[]> = {}
   if (state.subtasks instanceof Map) {
     state.subtasks.forEach((value, key) => {
@@ -190,7 +190,7 @@ export function DashboardViewV4({
             activityLog={state.activityLog}
             tasks={tasks}
             events={events}
-            subtasksMap={subtasksRecord}
+            subtasksMap={state.subtasks}
             onTaskEdit={modalState.handleEditTask}
             onEventEdit={modalState.handleEditEvent}
           />
