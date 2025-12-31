@@ -80,7 +80,7 @@ export function DashboardContainerV4() {
       isLoading={isLoading}
       isOnline={isOnline}
       syncError={syncError}
-      lastSyncedAt={lastSyncedAt}
+      lastSyncedAt={lastSyncedAt || undefined}
 
       // Modal state
       modalState={modalState}
