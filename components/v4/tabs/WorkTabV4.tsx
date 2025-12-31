@@ -1,7 +1,7 @@
 import { Task, FamilyMember, Subtask, Token } from '@/types/huisos-v2'
 import { TaskListItem } from '@/components/task-list-item'
 import { CompletedTasksDisclosure } from '@/components/v4/completed-tasks-disclosure'
-import { TokenWidget } from '@/components/token-widget'
+import { TokenWidgetV4 } from '@/components/v4/token-widget-v4'
 
 interface WorkTabV4Props {
   tasks: Task[]
@@ -34,15 +34,15 @@ export function WorkTabV4({
   const completedTasks = tasks.filter((t) => t.completed)
 
   const currentMember = familyMembers.find((m) => m.id === currentUserId)
-  const memberTokens = tokens
+  const memberTokenBalance = tokens
     .filter((t) => t.member_id === currentUserId)
     .reduce((sum, t) => sum + t.amount, 0)
 
   return (
     <div className="space-y-6">
       {currentMember && (
-        <TokenWidget
-          tokens={memberTokens}
+        <TokenWidgetV4
+          tokenBalance={memberTokenBalance}
           memberName={currentMember.name}
           onOpenRewardStore={onOpenRewardStore}
         />
