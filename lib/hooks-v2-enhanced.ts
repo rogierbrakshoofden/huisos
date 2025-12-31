@@ -306,6 +306,7 @@ export function useRealtimeSync() {
       if (!state.isOnline) return
 
       try {
+        // Poll tasks
         const { data: tasks } = await supabase
           .from('tasks')
           .select('*')
@@ -314,12 +315,50 @@ export function useRealtimeSync() {
         if (tasks) {
           dispatch({ type: 'SET_TASKS', payload: tasks as any })
         }
+
+        // ADDED: Poll subtasks as fallback if realtime fails
+        const { data: subtasks } = await supabase
+          .from('subtasks')
+          .select('*')
+          .order('parent_task_id')
+          .order('order_index', { ascending: true })
+        
+        if (subtasks && subtasks.length >= 0) {
+          // Group by task and dispatch
+          const subtasksByTask = new Map<string, Subtask[]>()
+          ;(subtasks as Subtask[]).forEach((st) => {
+            const taskId = st.parent_task_id
+            if (!subtasksByTask.has(taskId)) {
+              subtasksByTask.set(taskId, [])
+            }
+            subtasksByTask.get(taskId)!.push(st)
+          })
+          
+          // Dispatch all groups
+          subtasksByTask.forEach((subs, taskId) => {
+            dispatch({
+              type: 'REORDER_SUBTASKS',
+              payload: { taskId, subtasks: subs },
+            })
+          })
+          
+          // Clear subtasks for tasks that have none
+          state.tasks.forEach(task => {
+            if (!subtasksByTask.has(task.id)) {
+              dispatch({
+                type: 'REORDER_SUBTASKS',
+                payload: { taskId: task.id, subtasks: [] },
+              })
+            }
+          })
+        }
+        
         dispatch({ type: 'SET_LAST_SYNCED', payload: new Date() })
       } catch (err) {
         console.error('Polling failed:', err)
       }
     }, POLL_INTERVAL)
-  }, [state.isOnline, dispatch])
+  }, [state.isOnline, state.tasks, dispatch])
 
   useEffect(() => {
     loadInitialData()
