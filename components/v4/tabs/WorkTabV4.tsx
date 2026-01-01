@@ -1,7 +1,8 @@
-import { Task, FamilyMember, Subtask, Token } from '@/types/huisos-v2'
-import { TaskListItem } from '@/components/task-list-item'
-import { CompletedTasksDisclosure } from '@/components/v4/completed-tasks-disclosure'
-import { TokenWidgetV4 } from '@/components/v4/token-widget-v4'
+import { Task, FamilyMember, Token, Subtask } from '@/types/huisos-v2'
+import { TaskListItem } from '@/components/v4/task-list-item'
+import { TokenWidgetV4 } from '@/components/v4/TokenWidgetV4'
+import { CompletedTasksDisclosureV4 } from '@/components/v4/CompletedTasksDisclosureV4'
+import { Plus } from 'lucide-react'
 
 interface WorkTabV4Props {
   tasks: Task[]
@@ -30,64 +31,69 @@ export function WorkTabV4({
   onOpenNewTask,
   onOpenRewardStore,
 }: WorkTabV4Props) {
-  const incompleteTasks = tasks.filter((t) => !t.completed)
+  const activeTasks = tasks.filter((t) => !t.completed)
   const completedTasks = tasks.filter((t) => t.completed)
 
-  const currentMember = familyMembers.find((m) => m.id === currentUserId)
-  const memberTokenBalance = tokens
+  // Calculate token balance for current user
+  const tokenBalance = tokens
     .filter((t) => t.member_id === currentUserId)
     .reduce((sum, t) => sum + t.amount, 0)
 
+  const currentMember = familyMembers.find((m) => m.id === currentUserId)
+  const currentMemberName = currentMember?.name || 'Unknown'
+
   return (
-    <div className="space-y-6">
-      {currentMember && (
-        <TokenWidgetV4
-          tokenBalance={memberTokenBalance}
-          memberName={currentMember.name}
-          onOpenRewardStore={onOpenRewardStore}
-        />
-      )}
+    <div className="space-y-6 pb-6">
+      {/* Token Widget */}
+      <TokenWidgetV4
+        memberName={currentMemberName}
+        tokenBalance={tokenBalance}
+        onOpenRewardStore={onOpenRewardStore}
+      />
 
-      {incompleteTasks.length === 0 && completedTasks.length === 0 ? (
-        <div className="text-center py-12">
-          <p className="text-slate-400 mb-4">No tasks yet</p>
-          <button
-            onClick={onOpenNewTask}
-            className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition-colors"
-          >
-            Create your first task
-          </button>
-        </div>
-      ) : (
-        <>
-          {/* Incomplete tasks */}
-          <div className="space-y-3">
-            {incompleteTasks.map((task) => (
-              <TaskListItem
-                key={task.id}
-                task={task}
-                familyMembers={familyMembers}
-                subtasks={subtasksMap[task.id] || []}
-                onEdit={onEdit}
-                onDelete={onDelete}
-                onComplete={onComplete}
-                onToggleSubtask={onToggleSubtask}
-                currentUserId={currentUserId}
-              />
-            ))}
+      {/* Active Tasks */}
+      <div className="space-y-3">
+        {activeTasks.length === 0 ? (
+          <div className="text-center py-12 px-4">
+            <div className="w-20 h-20 mx-auto mb-4 rounded-full bg-slate-800/50 backdrop-blur-md flex items-center justify-center">
+              <Plus className="w-10 h-10 text-slate-600" />
+            </div>
+            <p className="text-slate-400 text-lg mb-2">All caught up!</p>
+            <p className="text-slate-500 text-sm mb-6">No active tasks right now</p>
+            <button
+              onClick={onOpenNewTask}
+              className="px-6 py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-semibold transition-all shadow-lg shadow-emerald-600/20"
+            >
+              Create First Task
+            </button>
           </div>
+        ) : (
+          activeTasks.map((task) => (
+            <TaskListItem
+              key={task.id}
+              task={task}
+              familyMembers={familyMembers}
+              subtasks={subtasksMap[task.id] || []}
+              onComplete={() => onComplete(task.id)}
+              onEdit={() => onEdit(task)}
+              onDelete={() => onDelete(task.id)}
+              onToggleSubtask={onToggleSubtask}
+            />
+          ))
+        )}
+      </div>
 
-          {/* Completed tasks disclosure */}
-          <CompletedTasksDisclosure
-            completedTasks={completedTasks}
-            familyMembers={familyMembers}
-            subtasksMap={subtasksMap}
-            currentUserId={currentUserId}
-            onEdit={onEdit}
-            onDelete={onDelete}
-            onToggleSubtask={onToggleSubtask}
-          />
-        </>
+      {/* Completed Tasks */}
+      {completedTasks.length > 0 && (
+        <CompletedTasksDisclosureV4
+          completedTasks={completedTasks}
+          familyMembers={familyMembers}
+          subtasksMap={subtasksMap}
+          onEdit={onEdit}
+          onDelete={onDelete}
+          onToggleSubtask={onToggleSubtask}
+          onComplete={onComplete}
+        />
       )}
     </div>
   )
