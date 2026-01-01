@@ -21,6 +21,7 @@ interface UpdateTaskRequest {
   assigned_to?: string | string[] | null
   due_date?: string | null
   note?: string | null
+  token_value?: number
   completed?: boolean
   completed_at?: string | null
   recurrence_type?: 'once' | 'repeating'
@@ -63,7 +64,7 @@ export default async function handler(
       return res.status(404).json({ error: 'Task not found' })
     }
 
-    // Build update object with only valid columns
+    // Build update object with only valid columns (exclude token_value - schema doesn't support it)
     const updates: Record<string, any> = {}
     
     if (updateData.title !== undefined) {

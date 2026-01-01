@@ -20,6 +20,7 @@ interface CreateTaskRequest {
   assigned_to?: string | string[]
   due_date?: string
   note?: string
+  token_value?: number
   created_by: string
   recurrence_type?: 'once' | 'repeating'
   rotation_enabled?: boolean
@@ -46,7 +47,8 @@ export default async function handler(
       title, 
       assigned_to, 
       due_date, 
-      note, 
+      note,
+      token_value,
       created_by,
       recurrence_type,
       rotation_enabled,
@@ -77,7 +79,7 @@ export default async function handler(
       return res.status(400).json({ error: 'At least one assignee is required' })
     }
 
-    // Insert task with rotation fields
+    // Insert task - only use fields that exist in schema
     const insertPayload: any = {
       title: title.trim(),
       assigned_to: assignedToArray,
