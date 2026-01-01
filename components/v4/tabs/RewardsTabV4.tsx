@@ -21,6 +21,7 @@ export function RewardsTabV4({
   onApproveRewardClaim,
 }: RewardsTabV4Props) {
   const pendingClaims = rewardClaims.filter(c => c.status === 'pending')
+  const availableRewards = rewards.filter(r => r.active)
 
   const canAfford = (cost: number) => tokenBalance >= cost
 
@@ -44,7 +45,7 @@ export function RewardsTabV4({
           <h3 className="text-sm font-semibold text-slate-400 px-1">Pending Approvals</h3>
           {pendingClaims.map(claim => {
             const reward = rewards.find(r => r.id === claim.reward_id)
-            const member = familyMembers.find(m => m.id === claim.claimed_by)
+            const member = familyMembers.find(m => m.id === claim.member_id)
             if (!reward || !member) return null
 
             return (
@@ -76,15 +77,15 @@ export function RewardsTabV4({
       {/* Available Rewards */}
       <div className="space-y-3">
         <h3 className="text-sm font-semibold text-slate-400 px-1">
-          {rewards.length > 0 ? 'Reward Store' : 'No Rewards Yet'}
+          {availableRewards.length > 0 ? 'Reward Store' : 'No Rewards Yet'}
         </h3>
-        {rewards.length === 0 ? (
+        {availableRewards.length === 0 ? (
           <div className="text-center py-12">
             <ShoppingBag className="w-16 h-16 text-slate-600 mx-auto mb-4" />
             <p className="text-slate-400">No rewards available</p>
           </div>
         ) : (
-          rewards.map(reward => {
+          availableRewards.map(reward => {
             const affordable = canAfford(reward.token_cost)
             
             return (

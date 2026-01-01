@@ -16,6 +16,7 @@ export function RewardStoreModalV4({
   onClose,
   onRedeemReward,
 }: RewardStoreModalV4Props) {
+  const availableRewards = rewards.filter(r => r.active)
   const canAfford = (cost: number) => tokenBalance >= cost
 
   if (!isOpen) return null
@@ -46,14 +47,14 @@ export function RewardStoreModalV4({
 
         {/* Content */}
         <div className="p-6">
-          {rewards.length === 0 ? (
+          {availableRewards.length === 0 ? (
             <div className="text-center py-12">
               <Gift className="w-16 h-16 text-slate-600 mx-auto mb-4" />
               <p className="text-slate-400">No rewards available</p>
             </div>
           ) : (
             <div className="space-y-4">
-              {rewards.map(reward => {
+              {availableRewards.map(reward => {
                 const affordable = canAfford(reward.token_cost)
                 
                 return (
