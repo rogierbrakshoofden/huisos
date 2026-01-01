@@ -21,16 +21,16 @@ export function TokenWidgetV4({
   return (
     <button
       onClick={onOpenRewardStore}
-      className="w-full bg-gradient-to-br from-amber-600/20 to-amber-800/20 backdrop-blur-md border border-amber-600/30 rounded-2xl p-4 hover:from-amber-600/30 hover:to-amber-800/30 transition-all shadow-lg shadow-amber-600/10"
+      className="w-full bg-gradient-to-br from-amber-600/20 to-amber-800/20 backdrop-blur-md border border-amber-600/30 rounded-2xl p-6 hover:from-amber-600/30 hover:to-amber-800/30 transition-all shadow-lg shadow-amber-600/10"
     >
-      <div className="flex items-center justify-between gap-4">
+      <div className="flex items-center justify-between">
         <div className="text-left">
-          <div className="text-xs text-amber-400 font-medium">
+          <div className="text-sm text-amber-400 font-medium mb-1">
             {memberName}'s Tokens
           </div>
-          <div className="text-3xl font-bold text-white">{tokenBalance}</div>
+          <div className="text-4xl font-bold text-white">{tokenBalance}</div>
         </div>
-        <Trophy className="w-10 h-10 text-amber-400/60 flex-shrink-0" />
+        <Trophy className="w-12 h-12 text-amber-400/50" />
       </div>
     </button>
   )

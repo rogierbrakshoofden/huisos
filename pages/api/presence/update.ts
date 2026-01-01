@@ -9,6 +9,7 @@ const supabase = createClient<Database>(supabaseUrl, supabaseServiceKey)
 
 interface UpdatePresenceRequest {
   memberId: string
+  period: 'morning' | 'afternoon' | 'evening'
   isHome: boolean
   note?: string
 }
@@ -16,9 +17,11 @@ interface UpdatePresenceRequest {
 interface PresenceResponse {
   id: string
   member_id: string
-  is_home: boolean
+  date: string
+  morning: boolean
+  afternoon: boolean
+  evening: boolean
   note?: string
-  last_seen_at: string
 }
 
 export default async function handler(
@@ -30,50 +33,57 @@ export default async function handler(
   }
 
   try {
-    const { memberId, isHome, note }: UpdatePresenceRequest = req.body
+    const { memberId, period, isHome, note }: UpdatePresenceRequest = req.body
 
     if (!memberId) {
       return res.status(400).json({ error: 'memberId is required' })
+    }
+
+    if (!period) {
+      return res.status(400).json({ error: 'period is required' })
     }
 
     if (isHome === undefined) {
       return res.status(400).json({ error: 'isHome is required' })
     }
 
-    const lastSeenAt = new Date().toISOString()
+    const today = new Date().toISOString().split('T')[0]
 
-    // Upsert presence record (update if exists, insert if not)
+    // Get existing presence record for today
+    const { data: existing, error: fetchError } = await supabase
+      .from('presence')
+      .select()
+      .eq('member_id', memberId)
+      .eq('date', today)
+      .maybeSingle() // Use maybeSingle instead of single to handle no rows gracefully
+
+    if (fetchError) {
+      console.error('Presence fetch error:', fetchError)
+      return res.status(500).json({ error: 'Failed to fetch presence' })
+    }
+
+    // Build update object based on period
+    const updateData = {
+      member_id: memberId,
+      date: today,
+      [period]: isHome,
+      note: note || null,
+    } as any
+
+    // Upsert presence record
     const { data, error } = await supabase
       .from('presence')
-      .upsert(
-        {
-          member_id: memberId,
-          is_home: isHome,
-          note: note || null,
-          last_seen_at: lastSeenAt,
-        } as any,
-        { onConflict: 'member_id' }
-      )
+      .upsert(updateData, { onConflict: 'member_id,date' })
       .select()
-      .single()
+      .maybeSingle()
 
     if (error) {
       console.error('Presence update error:', error)
       return res.status(500).json({ error: 'Failed to update presence' })
     }
 
-    // Log activity only if manual override (not heartbeat)
-    if (note) {
-      await supabase.from('activity_log').insert({
-        actor_id: memberId,
-        action_type: 'presence_updated',
-        entity_type: 'presence',
-        entity_id: memberId,
-        metadata: {
-          is_home: isHome,
-          note: note,
-        },
-      } as any)
+    if (!data) {
+      return res.status(500).json({ error: 'No data returned from update' })
     }
 
     return res.status(200).json(data as PresenceResponse)
