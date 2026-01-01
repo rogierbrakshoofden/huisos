@@ -35,7 +35,7 @@ export function UserSwitcherButtonV4({
 
       {/* Modal */}
       {isOpen && (
-        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
+        <div className="fixed inset-0 z-50 flex items-center justify-center pt-24 sm:pt-0">
           {/* Backdrop */}
           <div
             className="absolute inset-0 bg-black/60 backdrop-blur-sm"
@@ -43,7 +43,7 @@ export function UserSwitcherButtonV4({
           />
 
           {/* Sheet */}
-          <div className="relative bg-slate-900/95 backdrop-blur-md rounded-t-3xl sm:rounded-3xl w-full sm:max-w-md p-6 border-t sm:border border-slate-700/50 shadow-2xl">
+          <div className="relative bg-slate-900/95 backdrop-blur-md rounded-3xl w-5/6 sm:max-w-md p-6 border border-slate-700/50 shadow-2xl max-h-[80vh] overflow-y-auto">
             <h2 className="text-xl font-bold text-white mb-6">Switch User</h2>
 
             <div className="space-y-3">
