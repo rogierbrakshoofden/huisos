@@ -43,9 +43,9 @@ export function UserSwitcherButtonV4({
           />
 
           {/* Modal Content */}
-          <div className="relative w-full h-full max-w-md max-h-screen flex flex-col bg-slate-950/95 backdrop-blur-xl sm:rounded-3xl sm:max-h-[80vh] sm:border sm:border-slate-700/50 sm:shadow-2xl">
+          <div className="relative w-full h-full max-w-md flex flex-col bg-slate-950/95 backdrop-blur-xl sm:rounded-3xl sm:max-h-[90vh] sm:border sm:border-slate-700/50 sm:shadow-2xl">
             {/* Header */}
-            <div className="sticky top-0 flex items-center justify-between p-6 border-b border-slate-800/50 bg-slate-950/95 backdrop-blur-xl z-10">
+            <div className="flex-shrink-0 flex items-center justify-between p-6 border-b border-slate-800/50 bg-slate-950/95 backdrop-blur-xl z-10">
               <h2 className="text-xl font-bold text-white">Switch User</h2>
               <button
                 onClick={() => setIsOpen(false)}
