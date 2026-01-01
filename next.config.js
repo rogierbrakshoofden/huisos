@@ -1,3 +1,4 @@
+// Cache bust: 2026-01-02T00:22:45Z - Phase 8 deployment fixes
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
