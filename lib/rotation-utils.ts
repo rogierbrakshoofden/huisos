@@ -2,6 +2,8 @@
  * Rotation Logic Utilities
  * 
  * Helper functions for rotation calculations, fairness metrics, and scheduling
+ * 
+ * Phase 8 Implementation - Build timestamp: 2026-01-02T00:18:00Z
  */
 
 import type { RotationConfig, Task, FamilyMember } from '@/types/huisos-v2'
