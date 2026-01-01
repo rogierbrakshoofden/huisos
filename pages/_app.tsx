@@ -24,12 +24,28 @@ export default function App({ Component, pageProps }: AppProps) {
     }
 
     // Initialize notifications on app load
-    if (typeof window !== 'undefined') {
-      NotificationService.init().then((success) => {
-        if (success) {
-          console.log('[App] Notifications initialized')
-        }
-      })
+    if (typeof window !== 'undefined' && 'Notification' in window) {
+      // Request notification permission if not already granted or denied
+      if (Notification.permission === 'default') {
+        console.log('[App] Requesting notification permission...')
+        NotificationService.requestPermission()
+          .then((granted) => {
+            if (granted) {
+              console.log('[App] Notification permission granted')
+              NotificationService.subscribe().catch(err => {
+                console.warn('[App] Push subscription failed:', err)
+              })
+            }
+          })
+          .catch((error) => {
+            console.warn('[App] Notification setup error:', error)
+          })
+      } else if (Notification.permission === 'granted') {
+        // Already granted, try to subscribe
+        NotificationService.subscribe().catch(err => {
+          console.warn('[App] Push subscription failed:', err)
+        })
+      }
     }
   }, [])
 
