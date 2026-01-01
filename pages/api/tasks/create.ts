@@ -79,13 +79,12 @@ export default async function handler(
       return res.status(400).json({ error: 'At least one assignee is required' })
     }
 
-    // Insert task with rotation fields
+    // Insert task - only use fields that exist in schema
     const insertPayload: any = {
       title: title.trim(),
       assigned_to: assignedToArray,
       due_date: due_date || null,
       note: note?.trim() || null,
-      token_value: token_value ?? 1,
       created_by,
       completed: false,
       recurrence_type: recurrence_type || 'once',
@@ -118,7 +117,6 @@ export default async function handler(
       entity_id: task.id,
       metadata: {
         title: task.title,
-        token_value: task.token_value,
         assignee_count: assignedToArray.length,
       },
     } as any)
