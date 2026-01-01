@@ -55,13 +55,16 @@ export class NotificationService {
 
     try {
       const registration = await navigator.serviceWorker.ready
+      const vapidKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY
+      
+      if (!vapidKey) {
+        throw new Error('VAPID public key not configured')
+      }
       
       // Subscribe to push (requires VAPID public key from server)
       const subscription = await registration.pushManager.subscribe({
         userVisibleOnly: true,
-        applicationServerKey: this.urlBase64ToUint8Array(
-          process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY!
-        )
+        applicationServerKey: this.urlBase64ToUint8Array(vapidKey)
       })
 
       console.log('[Notifications] Subscribed to push:', subscription)
@@ -127,7 +130,7 @@ export class NotificationService {
     })
   }
 
-  private static urlBase64ToUint8Array(base64String: string): Uint8Array {
+  private static urlBase64ToUint8Array(base64String: string): BufferSource {
     const padding = '='.repeat((4 - (base64String.length % 4)) % 4)
     const base64 = (base64String + padding)
       .replace(/\-/g, '+')
