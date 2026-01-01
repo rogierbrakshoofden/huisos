@@ -18,6 +18,8 @@ export function UserSwitcherButtonV4({
 }: UserSwitcherButtonV4Props) {
   const [isOpen, setIsOpen] = useState(false)
 
+  const handleClose = () => setIsOpen(false)
+
   return (
     <>
       {/* Trigger Button */}
@@ -35,20 +37,20 @@ export function UserSwitcherButtonV4({
 
       {/* Fullscreen Modal */}
       {isOpen && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm sm:flex sm:items-center sm:justify-center">
-          {/* Close backdrop - only on mobile */}
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm p-0 m-0">
+          {/* Backdrop */}
           <div
-            className="absolute inset-0 sm:hidden"
-            onClick={() => setIsOpen(false)}
+            className="absolute inset-0"
+            onClick={handleClose}
           />
 
-          {/* Modal Content - Full height on mobile, centered box on desktop */}
-          <div className="relative w-full h-full sm:w-full sm:max-w-md sm:max-h-[90vh] flex flex-col bg-slate-950/95 backdrop-blur-xl sm:rounded-3xl sm:border sm:border-slate-700/50 sm:shadow-2xl">
+          {/* Modal Content */}
+          <div className="absolute inset-0 w-screen h-screen sm:inset-auto sm:relative sm:w-auto sm:h-auto sm:max-w-md sm:max-h-[90vh] sm:m-auto flex flex-col bg-slate-950/95 backdrop-blur-xl sm:rounded-3xl sm:border sm:border-slate-700/50 sm:shadow-2xl">
             {/* Header */}
             <div className="flex-shrink-0 flex items-center justify-between p-6 border-b border-slate-800/50 bg-slate-950/95 backdrop-blur-xl z-10">
               <h2 className="text-xl font-bold text-white">Switch User</h2>
               <button
-                onClick={() => setIsOpen(false)}
+                onClick={handleClose}
                 className="p-2 hover:bg-slate-800/50 rounded-full transition-colors"
               >
                 <X size={24} className="text-slate-400" />
@@ -62,7 +64,7 @@ export function UserSwitcherButtonV4({
                   key={member.id}
                   onClick={() => {
                     onUserChange(member.id)
-                    setIsOpen(false)
+                    handleClose()
                   }}
                   className={cn(
                     'w-full flex items-center gap-4 p-4 rounded-2xl transition-all',
@@ -88,7 +90,7 @@ export function UserSwitcherButtonV4({
               <button
                 onClick={() => {
                   onUserChange('everybody')
-                  setIsOpen(false)
+                  handleClose()
                 }}
                 className={cn(
                   'w-full flex items-center gap-4 p-4 rounded-2xl transition-all border-t border-slate-700/50 mt-4 pt-6',
