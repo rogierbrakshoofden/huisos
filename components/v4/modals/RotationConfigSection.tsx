@@ -1,7 +1,6 @@
 'use client'
 
 import React, { useState, useEffect } from 'react'
-import { DragDropContext, Droppable, Draggable, DropResult } from 'react-beautiful-dnd'
 import { GripVertical, Plus, Trash2 } from 'lucide-react'
 import { format } from 'date-fns'
 import { Button } from '@/components/ui/button'
@@ -69,16 +68,10 @@ export function RotationConfigSection({
     onConfigChange(newConfig)
   }
 
-  const handleRotationOrderChange = (result: DropResult) => {
-    const { source, destination } = result
-
-    if (!destination) return
-    if (source.droppableId === destination.droppableId && source.index === destination.index)
-      return
-
+  const handleRotationOrderChange = (fromIndex: number, toIndex: number) => {
     const newOrder = Array.from(config.rotation_order)
-    const [moved] = newOrder.splice(source.index, 1)
-    newOrder.splice(destination.index, 0, moved)
+    const [moved] = newOrder.splice(fromIndex, 1)
+    newOrder.splice(toIndex, 0, moved)
 
     const newConfig = { ...config, rotation_order: newOrder }
     setConfig(newConfig)
@@ -214,56 +207,26 @@ export function RotationConfigSection({
             </p>
           </div>
 
-          {/* Rotation Order Manager */}
+          {/* Rotation Order (Simplified - no drag-drop) */}
           <div className="space-y-3">
             <Label className="text-sm font-medium">Rotation Order</Label>
             {config.rotation_order.length > 0 ? (
-              <DragDropContext onDragEnd={handleRotationOrderChange}>
-                <Droppable droppableId="rotation-order">
-                  {(provided, snapshot) => (
-                    <div
-                      {...provided.droppableProps}
-                      ref={provided.innerRef}
-                      className={`space-y-2 rounded-md border p-3 ${
-                        snapshot.isDraggingOver ? 'bg-blue-50' : 'bg-white'
-                      }`}
-                    >
-                      {config.rotation_order.map((memberId, index) => (
-                        <Draggable
-                          key={memberId}
-                          draggableId={`rotation-member-${memberId}`}
-                          index={index}
-                          isDragDisabled={disabled}
-                        >
-                          {(provided, snapshot) => (
-                            <div
-                              ref={provided.innerRef}
-                              {...provided.draggableProps}
-                              className={`flex items-center gap-3 rounded border p-2 ${
-                                snapshot.isDragging ? 'bg-blue-100 shadow-md' : 'bg-white'
-                              }`}
-                            >
-                              <div {...provided.dragHandleProps} className="text-slate-400">
-                                <GripVertical size={18} />
-                              </div>
-                              <div className="flex flex-1 items-center gap-2">
-                                <span className="font-semibold text-slate-500">{index + 1}.</span>
-                                <span className="font-medium">{getMemberName(memberId)}</span>
-                                {index === config.current_index && (
-                                  <span className="text-xs rounded-full bg-blue-100 px-2 py-0.5 text-blue-700 font-semibold">
-                                    Current
-                                  </span>
-                                )}
-                              </div>
-                            </div>
-                          )}
-                        </Draggable>
-                      ))}
-                      {provided.placeholder}
-                    </div>
-                  )}
-                </Droppable>
-              </DragDropContext>
+              <div className="space-y-2 rounded-md border border-slate-200 bg-white p-3">
+                {config.rotation_order.map((memberId, index) => (
+                  <div
+                    key={memberId}
+                    className="flex items-center gap-3 rounded border border-slate-200 p-2 bg-white"
+                  >
+                    <span className="font-semibold text-slate-500 text-sm">{index + 1}.</span>
+                    <span className="flex-1 font-medium text-slate-700">{getMemberName(memberId)}</span>
+                    {index === config.current_index && (
+                      <span className="text-xs rounded-full bg-blue-100 px-2 py-0.5 text-blue-700 font-semibold">
+                        Current
+                      </span>
+                    )}
+                  </div>
+                ))}
+              </div>
             ) : (
               <p className="text-sm text-slate-500 italic">No family members assigned to task</p>
             )}
