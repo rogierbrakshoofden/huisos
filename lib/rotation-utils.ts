@@ -8,6 +8,13 @@ import type { RotationConfig, Task, FamilyMember } from '@/types/huisos-v2'
 import { differenceInDays, isBefore, addWeeks, addMonths } from 'date-fns'
 
 /**
+ * Check if rotation should be shown for a task
+ */
+export function shouldShowRotation(rotationConfig: RotationConfig | null | undefined): boolean {
+  return rotationConfig?.enabled ?? false
+}
+
+/**
  * Get the next assignee in rotation based on current config
  */
 export function getNextAssignee(
