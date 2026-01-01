@@ -20,8 +20,12 @@ export function HeaderV4({
   const activeUser = familyMembers.find((m) => m.id === activeUserId)
 
   return (
-    <header className="fixed top-0 left-0 right-0 z-50 h-16 bg-gradient-to-br from-slate-950 via-slate-950 to-slate-900 backdrop-blur-sm border-b border-slate-800/30">
-      <div className="max-w-2xl mx-auto px-4 h-full flex items-center justify-between">
+    <header className="fixed top-0 left-0 right-0 z-50 bg-gradient-to-br from-slate-950 via-slate-950 to-slate-900 backdrop-blur-sm border-b border-slate-800/30 safe-area-inset-top">
+      {/* Safe area padding for notch/camera bump */}
+      <div className="h-[env(safe-area-inset-top)]" />
+      
+      {/* Header content - 64px tall */}
+      <div className="h-16 max-w-2xl mx-auto px-4 flex items-center justify-between">
         {/* Left: User Switcher Button */}
         <UserSwitcherButtonV4
           activeUser={activeUser}
