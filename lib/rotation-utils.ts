@@ -9,9 +9,67 @@ import { differenceInDays, isBefore, addWeeks, addMonths } from 'date-fns'
 
 /**
  * Check if rotation should be shown for a task
+ * Supports legacy rotation system (task-modal.tsx uses this)
  */
-export function shouldShowRotation(rotationConfig: RotationConfig | null | undefined): boolean {
-  return rotationConfig?.enabled ?? false
+export function shouldShowRotation(input: any): boolean {
+  if (!input) return false
+  
+  // New Phase 8 rotation system
+  if (input.rotation_config?.enabled) return true
+  
+  // Legacy rotation system (task-modal.tsx)
+  if (input.recurrence_type === 'repeating' && Array.isArray(input.assigned_to) && input.assigned_to.length > 1) {
+    return true
+  }
+  
+  return false
+}
+
+/**
+ * Validate rotation config - supports both legacy and new systems
+ * Legacy: validateRotationConfig(assigneeIds, excludeIds)
+ * New: validateRotationConfig(config)
+ */
+export function validateRotationConfig(
+  configOrAssigneeIds: RotationConfig | string[],
+  excludeIds?: string[]
+): string | null {
+  // Legacy system (task-modal.tsx) - called with (assigneeIds, excludeIds)
+  if (Array.isArray(configOrAssigneeIds)) {
+    const assigneeIds = configOrAssigneeIds
+    const exclude = excludeIds || []
+    
+    const eligible = assigneeIds.filter(id => !exclude.includes(id))
+    if (eligible.length < 2) {
+      return 'Rotation requires at least 2 eligible assignees (not excluded)'
+    }
+    return null
+  }
+
+  // New system (Phase 8) - called with config object
+  const config = configOrAssigneeIds as RotationConfig
+  const errors: string[] = []
+
+  if (config.enabled) {
+    if (config.rotation_order.length === 0) {
+      errors.push('At least one person must be in the rotation order')
+    }
+
+    if (config.rotation_order.length < 2) {
+      errors.push('Rotation requires at least 2 people')
+    }
+
+    if (config.current_index < 0 || config.current_index >= config.rotation_order.length) {
+      errors.push('Current index is out of range')
+    }
+
+    const startDate = new Date(config.rotation_start_date)
+    if (isNaN(startDate.getTime())) {
+      errors.push('Invalid start date')
+    }
+  }
+
+  return errors.length > 0 ? errors.join('; ') : null
 }
 
 /**
@@ -230,37 +288,6 @@ export function getRebalanceSuggestion(
   }
 
   return null
-}
-
-/**
- * Validate rotation config
- */
-export function validateRotationConfig(config: RotationConfig): { valid: boolean; errors: string[] } {
-  const errors: string[] = []
-
-  if (config.enabled) {
-    if (config.rotation_order.length === 0) {
-      errors.push('At least one person must be in the rotation order')
-    }
-
-    if (config.rotation_order.length < 2) {
-      errors.push('Rotation requires at least 2 people')
-    }
-
-    if (config.current_index < 0 || config.current_index >= config.rotation_order.length) {
-      errors.push('Current index is out of range')
-    }
-
-    const startDate = new Date(config.rotation_start_date)
-    if (isNaN(startDate.getTime())) {
-      errors.push('Invalid start date')
-    }
-  }
-
-  return {
-    valid: errors.length === 0,
-    errors,
-  }
 }
 
 /**
