@@ -1,13 +1,59 @@
-// Service Worker for push notifications
+// Service Worker v2 - Push notifications + cache management
+const CACHE_NAME = 'huisos-v1'
+const RUNTIME_CACHE = 'huisos-runtime-v1'
 
 self.addEventListener('install', (event) => {
-  console.log('[SW] Installing...')
-  self.skipWaiting()
+  console.log('[SW] Installing service worker v2...')
+  self.skipWaiting() // Activate immediately
 })
 
 self.addEventListener('activate', (event) => {
-  console.log('[SW] Activating...')
-  self.clients.claim()
+  console.log('[SW] Activating service worker v2...')
+  
+  // Clean up old caches
+  event.waitUntil(
+    caches.keys().then((cacheNames) => {
+      return Promise.all(
+        cacheNames
+          .filter((name) => name !== CACHE_NAME && name !== RUNTIME_CACHE)
+          .map((name) => {
+            console.log('[SW] Deleting old cache:', name)
+            return caches.delete(name)
+          })
+      )
+    })
+  )
+  
+  self.clients.claim() // Control all pages immediately
+})
+
+// Network first strategy - try network, fall back to cache
+self.addEventListener('fetch', (event) => {
+  // Only handle GET requests
+  if (event.request.method !== 'GET') return
+
+  // Skip internal API calls - let them go through normally
+  if (event.request.url.includes('/api/')) {
+    return
+  }
+
+  event.respondWith(
+    fetch(event.request)
+      .then((response) => {
+        // Cache successful responses
+        if (response && response.status === 200) {
+          const responseToCache = response.clone()
+          caches.open(RUNTIME_CACHE).then((cache) => {
+            cache.put(event.request, responseToCache)
+          })
+        }
+        return response
+      })
+      .catch(() => {
+        // Fall back to cache
+        return caches.match(event.request)
+      })
+  )
 })
 
 // Handle push notifications
