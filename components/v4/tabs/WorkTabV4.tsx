@@ -1,7 +1,7 @@
 import { Task, FamilyMember, Token, Subtask } from '@/types/huisos-v2'
 import { TaskListItem } from '@/components/v4/task-list-item'
-import { TokenWidgetV4 } from '@/components/v4/TokenWidgetV4'
-import { CompletedTasksDisclosureV4 } from '@/components/v4/CompletedTasksDisclosureV4'
+import { TokenWidgetV4 } from '@/components/v4/token-widget-v4'
+import { CompletedTasksDisclosureV4 } from '@/components/v4/completed-tasks-disclosure'
 import { Plus } from 'lucide-react'
 
 interface WorkTabV4Props {
