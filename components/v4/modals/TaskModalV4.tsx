@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { X, Check, Trash2, Plus, GripVertical } from 'lucide-react'
 import { Task, FamilyMember, RecurrenceType, Subtask } from '@/types/huisos-v2'
+import { AssigneeCircles } from '@/components/assignee-circles'
 
 interface TaskModalV4Props {
   task?: Task | null
@@ -25,7 +26,10 @@ export function TaskModalV4({
   const [assigneeIds, setAssigneeIds] = useState<string[]>([])
   const [dueDate, setDueDate] = useState('')
   const [note, setNote] = useState('')
+  const [tokenValue, setTokenValue] = useState<number>(1)
   const [recurrenceType, setRecurrenceType] = useState<RecurrenceType>('once')
+  const [subtasks, setSubtasks] = useState<Array<{ id: string; title: string; completed: boolean }>>([])
+  const [newSubtaskTitle, setNewSubtaskTitle] = useState('')
   const [isSaving, setIsSaving] = useState(false)
   const [errors, setErrors] = useState<Record<string, string>>({})
 
@@ -35,13 +39,20 @@ export function TaskModalV4({
       setAssigneeIds(Array.isArray(task.assigned_to) ? task.assigned_to : task.assigned_to ? [task.assigned_to] : [])
       setDueDate(task.due_date || '')
       setNote(task.note || '')
+      setTokenValue(task.token_value || 1)
       setRecurrenceType(task.recurrence_type || 'once')
+      // Load subtasks if available (placeholder for now)
+      setSubtasks([])
+      setNewSubtaskTitle('')
     } else {
       setTitle('')
       setAssigneeIds([])
       setDueDate('')
       setNote('')
+      setTokenValue(1)
       setRecurrenceType('once')
+      setSubtasks([])
+      setNewSubtaskTitle('')
     }
     setErrors({})
   }, [task, isOpen])
@@ -51,6 +62,7 @@ export function TaskModalV4({
     if (!title.trim()) newErrors.title = 'Title is required'
     if (title.length > 100) newErrors.title = 'Title must be 100 characters or less'
     if (assigneeIds.length === 0) newErrors.assignees = 'At least one person must be assigned'
+    if (tokenValue < 0) newErrors.tokenValue = 'Token value cannot be negative'
     setErrors(newErrors)
     return Object.keys(newErrors).length === 0
   }
@@ -64,6 +76,7 @@ export function TaskModalV4({
         assigned_to: assigneeIds,
         due_date: dueDate || undefined,
         note: note.trim() || undefined,
+        token_value: tokenValue,
         recurrence_type: recurrenceType,
       })
       onClose()
@@ -92,6 +105,19 @@ export function TaskModalV4({
       prev.includes(memberId) ? prev.filter(id => id !== memberId) : [...prev, memberId]
     )
     if (errors.assignees) setErrors(prev => ({ ...prev, assignees: '' }))
+  }
+
+  const addSubtask = () => {
+    if (!newSubtaskTitle.trim()) return
+    setSubtasks([
+      ...subtasks,
+      { id: `temp-${Date.now()}`, title: newSubtaskTitle.trim(), completed: false }
+    ])
+    setNewSubtaskTitle('')
+  }
+
+  const removeSubtask = (subtaskId: string) => {
+    setSubtasks(subtasks.filter(st => st.id !== subtaskId))
   }
 
   if (!isOpen) return null
@@ -133,46 +159,138 @@ export function TaskModalV4({
             <p className="text-xs text-slate-500 mt-1">{title.length}/100</p>
           </div>
 
-          {/* Assignees */}
+          {/* Assignees - Circles Style */}
           <div>
             <label className="block text-sm font-semibold text-slate-300 mb-3">
               Assign to <span className="text-red-400">*</span>
             </label>
-            <div className="grid grid-cols-2 gap-3">
+            
+            {/* Selected assignees as circles */}
+            {assigneeIds.length > 0 && (
+              <div className="mb-4 p-4 bg-slate-900/30 rounded-xl border border-slate-700/50 flex items-center justify-between">
+                <div className="flex-1">
+                  <AssigneeCircles
+                    assigneeIds={assigneeIds}
+                    familyMembers={familyMembers}
+                    max={5}
+                    size="md"
+                  />
+                </div>
+                <span className="text-xs text-slate-400 ml-3">{assigneeIds.length} selected</span>
+              </div>
+            )}
+
+            {/* Assignee selector buttons */}
+            <div className="grid grid-cols-5 gap-2">
               {familyMembers.map(member => {
                 const isSelected = assigneeIds.includes(member.id)
-                const colorMap: Record<string, string> = {
-                  purple: 'bg-purple-600',
-                  green: 'bg-green-600',
-                  orange: 'bg-orange-600',
-                  yellow: 'bg-yellow-600',
-                  blue: 'bg-blue-600',
-                }
-                const bgColor = colorMap[member.color] || 'bg-slate-600'
-
                 return (
                   <button
                     key={member.id}
                     type="button"
                     onClick={() => toggleAssignee(member.id)}
-                    className={`p-3 rounded-xl border-2 flex items-center gap-3 transition-all ${
-                      isSelected
-                        ? 'border-blue-500 bg-blue-500/20 shadow-lg shadow-blue-500/20'
-                        : 'border-slate-700/50 bg-slate-900/30 hover:border-slate-600'
-                    }`}
+                    className={`
+                      w-full aspect-square rounded-xl flex flex-col items-center justify-center gap-1 transition-all text-xs
+                      ${
+                        isSelected
+                          ? 'border-2 border-blue-500 bg-blue-500/20 shadow-lg shadow-blue-500/20'
+                          : 'border-2 border-slate-700/50 bg-slate-900/30 hover:border-slate-600'
+                      }
+                    `}
                   >
-                    <div className={`w-10 h-10 rounded-full ${bgColor} flex items-center justify-center font-bold text-sm text-white`}>
+                    <div
+                      className="w-8 h-8 rounded-full flex items-center justify-center font-bold text-white"
+                      style={{ backgroundColor: member.color }}
+                    >
                       {member.initials}
                     </div>
-                    <span className="text-sm font-medium text-white flex-1 text-left">
-                      {member.name}
-                    </span>
-                    {isSelected && <Check className="w-5 h-5 text-blue-400" />}
+                    <span className="text-slate-400 font-medium">{member.initials}</span>
                   </button>
                 )
               })}
             </div>
             {errors.assignees && <p className="text-red-400 text-sm mt-2">{errors.assignees}</p>}
+          </div>
+
+          {/* Token Value */}
+          <div>
+            <label className="block text-sm font-semibold text-slate-300 mb-2">
+              Token Value
+            </label>
+            <input
+              type="number"
+              min="0"
+              max="100"
+              value={tokenValue}
+              onChange={e => {
+                setTokenValue(Math.max(0, parseInt(e.target.value) || 0))
+                if (errors.tokenValue) setErrors(prev => ({ ...prev, tokenValue: '' }))
+              }}
+              className="w-full px-4 py-3 bg-slate-900/50 backdrop-blur-md border border-slate-700/50 rounded-xl text-white focus:outline-none focus:border-blue-500/50 focus:ring-2 focus:ring-blue-500/20"
+            />
+            {errors.tokenValue && <p className="text-red-400 text-sm mt-1">{errors.tokenValue}</p>}
+            <p className="text-xs text-slate-500 mt-1">Points earned on completion</p>
+          </div>
+
+          {/* Subtasks */}
+          <div>
+            <label className="block text-sm font-semibold text-slate-300 mb-3">Subtasks</label>
+            
+            {/* Subtasks list */}
+            {subtasks.length > 0 && (
+              <div className="space-y-2 mb-4 p-4 bg-slate-900/30 rounded-xl border border-slate-700/50">
+                {subtasks.map((subtask) => (
+                  <div key={subtask.id} className="flex items-center gap-2 group">
+                    <input
+                      type="checkbox"
+                      checked={subtask.completed}
+                      onChange={() => {
+                        setSubtasks(
+                          subtasks.map(st =>
+                            st.id === subtask.id ? { ...st, completed: !st.completed } : st
+                          )
+                        )
+                      }}
+                      className="w-4 h-4 rounded cursor-pointer"
+                    />
+                    <span className={`flex-1 text-sm ${subtask.completed ? 'text-slate-500 line-through' : 'text-slate-300'}`}>
+                      {subtask.title}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => removeSubtask(subtask.id)}
+                      className="opacity-0 group-hover:opacity-100 p-1 hover:bg-red-600/20 rounded transition-all"
+                    >
+                      <X size={16} className="text-red-400" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Add subtask input */}
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={newSubtaskTitle}
+                onChange={e => setNewSubtaskTitle(e.target.value)}
+                onKeyDown={e => {
+                  if (e.key === 'Enter') {
+                    addSubtask()
+                  }
+                }}
+                placeholder="Add subtask..."
+                className="flex-1 px-4 py-2 bg-slate-900/50 backdrop-blur-md border border-slate-700/50 rounded-xl text-white placeholder-slate-500 text-sm focus:outline-none focus:border-blue-500/50 focus:ring-2 focus:ring-blue-500/20"
+              />
+              <button
+                type="button"
+                onClick={addSubtask}
+                disabled={!newSubtaskTitle.trim()}
+                className="px-4 py-2 bg-blue-600/20 border border-blue-600/50 rounded-xl text-blue-400 hover:bg-blue-600/30 disabled:opacity-50 transition-colors"
+              >
+                <Plus size={16} />
+              </button>
+            </div>
           </div>
 
           {/* Recurrence */}
