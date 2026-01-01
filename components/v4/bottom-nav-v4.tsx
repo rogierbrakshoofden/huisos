@@ -19,7 +19,6 @@ export function BottomNavV4({ activeTab, onTabChange, counts }: BottomNavV4Props
     { id: 'stats' as const, icon: BarChart3, label: 'Stats' },
     { id: 'rewards' as const, icon: Gift, label: 'Rewards', count: counts.rewards },
     { id: 'log' as const, icon: ScrollText, label: 'Log', count: counts.log },
-    { id: 'log' as const, icon: ScrollText, label: 'Log' },
   ]
 
   return (
