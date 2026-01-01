@@ -21,7 +21,6 @@ export function RewardsTabV4({
   onApproveRewardClaim,
 }: RewardsTabV4Props) {
   const pendingClaims = rewardClaims.filter(c => c.status === 'pending')
-  const availableRewards = rewards.filter(r => !r.is_archived)
 
   const canAfford = (cost: number) => tokenBalance >= cost
 
@@ -77,15 +76,15 @@ export function RewardsTabV4({
       {/* Available Rewards */}
       <div className="space-y-3">
         <h3 className="text-sm font-semibold text-slate-400 px-1">
-          {availableRewards.length > 0 ? 'Reward Store' : 'No Rewards Yet'}
+          {rewards.length > 0 ? 'Reward Store' : 'No Rewards Yet'}
         </h3>
-        {availableRewards.length === 0 ? (
+        {rewards.length === 0 ? (
           <div className="text-center py-12">
             <ShoppingBag className="w-16 h-16 text-slate-600 mx-auto mb-4" />
             <p className="text-slate-400">No rewards available</p>
           </div>
         ) : (
-          availableRewards.map(reward => {
+          rewards.map(reward => {
             const affordable = canAfford(reward.token_cost)
             
             return (
