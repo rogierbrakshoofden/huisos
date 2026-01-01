@@ -1,40 +1,36 @@
-'use client'
-
-import { Coins } from 'lucide-react'
+import { Trophy } from 'lucide-react'
+import { Token, FamilyMember } from '@/types/huisos-v2'
 
 interface TokenWidgetV4Props {
-  tokenBalance: number
+  tokens: Token[]
+  memberId: string
   memberName: string
   onOpenRewardStore: () => void
 }
 
 export function TokenWidgetV4({
-  tokenBalance,
+  tokens,
+  memberId,
   memberName,
   onOpenRewardStore,
 }: TokenWidgetV4Props) {
+  const tokenBalance = tokens
+    .filter(t => t.member_id === memberId)
+    .reduce((sum, t) => sum + t.amount, 0)
+
   return (
     <button
       onClick={onOpenRewardStore}
-      className="w-full bg-slate-900/50 backdrop-blur-md border border-slate-700/50 rounded-2xl p-4 hover:bg-slate-800/60 transition-all group"
+      className="w-full bg-gradient-to-br from-amber-600/20 to-amber-800/20 backdrop-blur-md border border-amber-600/30 rounded-2xl p-6 hover:from-amber-600/30 hover:to-amber-800/30 transition-all shadow-lg shadow-amber-600/10"
     >
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="w-12 h-12 rounded-full bg-amber-600/20 flex items-center justify-center group-hover:bg-amber-600/30 transition-colors">
-            <Coins className="w-6 h-6 text-amber-400" />
+        <div className="text-left">
+          <div className="text-sm text-amber-400 font-medium mb-1">
+            {memberName}'s Tokens
           </div>
-          <div className="text-left">
-            <div className="text-2xl font-bold text-white">
-              {tokenBalance}
-            </div>
-            <div className="text-sm text-slate-400">
-              {memberName}'s tokens
-            </div>
-          </div>
+          <div className="text-4xl font-bold text-white">{tokenBalance}</div>
         </div>
-        <div className="text-sm text-emerald-400 font-medium group-hover:text-emerald-300 transition-colors">
-          Open Store →
-        </div>
+        <Trophy className="w-12 h-12 text-amber-400/50" />
       </div>
     </button>
   )
