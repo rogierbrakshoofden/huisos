@@ -10,6 +10,34 @@ import type { RotationConfig, Task, FamilyMember } from '@/types/huisos-v2'
 import { differenceInDays, isBefore, addWeeks, addMonths } from 'date-fns'
 
 /**
+ * Get the next rotation index for legacy rotation system
+ * Used by API routes that use rotation_index + assigned_to array
+ */
+export function getNextRotationIndex(
+  currentIndex: number,
+  assigneeIds: string[],
+  excludeIds: string[] = []
+): number {
+  if (assigneeIds.length === 0) return 0
+
+  let nextIndex = (currentIndex + 1) % assigneeIds.length
+  let attempts = 0
+  const maxAttempts = assigneeIds.length
+
+  // Skip excluded members
+  while (attempts < maxAttempts) {
+    if (!excludeIds.includes(assigneeIds[nextIndex])) {
+      return nextIndex
+    }
+    nextIndex = (nextIndex + 1) % assigneeIds.length
+    attempts++
+  }
+
+  // If all are excluded, just return the next in sequence
+  return (currentIndex + 1) % assigneeIds.length
+}
+
+/**
  * Check if rotation should be shown for a task
  * Supports legacy rotation system (task-modal.tsx uses this)
  */
