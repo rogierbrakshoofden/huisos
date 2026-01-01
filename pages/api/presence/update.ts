@@ -55,10 +55,9 @@ export default async function handler(
       .select()
       .eq('member_id', memberId)
       .eq('date', today)
-      .single()
+      .maybeSingle() // Use maybeSingle instead of single to handle no rows gracefully
 
-    if (fetchError && fetchError.code !== 'PGRST116') {
-      // PGRST116 = no rows found, which is fine
+    if (fetchError) {
       console.error('Presence fetch error:', fetchError)
       return res.status(500).json({ error: 'Failed to fetch presence' })
     }
@@ -76,11 +75,15 @@ export default async function handler(
       .from('presence')
       .upsert(updateData, { onConflict: 'member_id,date' })
       .select()
-      .single()
+      .maybeSingle()
 
     if (error) {
       console.error('Presence update error:', error)
       return res.status(500).json({ error: 'Failed to update presence' })
+    }
+
+    if (!data) {
+      return res.status(500).json({ error: 'No data returned from update' })
     }
 
     return res.status(200).json(data as PresenceResponse)
