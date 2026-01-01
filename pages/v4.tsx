@@ -6,12 +6,12 @@ export default function V4Dashboard() {
 
   useEffect(() => {
     setMounted(true)
-  }, [mounted])
+  }, [])
 
   if (!mounted) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950">
-        <p className="text-slate-300">Loading...</p>
+        <div className="w-12 h-12 border-4 border-slate-700 border-t-slate-300 rounded-full animate-spin" />
       </div>
     )
   }
