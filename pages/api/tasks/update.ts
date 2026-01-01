@@ -64,7 +64,7 @@ export default async function handler(
       return res.status(404).json({ error: 'Task not found' })
     }
 
-    // Build update object with only valid columns
+    // Build update object with only valid columns (exclude token_value - schema doesn't support it)
     const updates: Record<string, any> = {}
     
     if (updateData.title !== undefined) {
@@ -104,9 +104,6 @@ export default async function handler(
     }
     if (updateData.note !== undefined) {
       updates.note = updateData.note?.trim() || null
-    }
-    if (updateData.token_value !== undefined) {
-      updates.token_value = Math.max(0, updateData.token_value)
     }
     if (updateData.completed !== undefined) {
       updates.completed = updateData.completed
@@ -171,7 +168,6 @@ export default async function handler(
         entity_id: task.id,
         metadata: {
           title: task.title,
-          token_value: task.token_value,
         },
       } as any)
     }
