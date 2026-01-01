@@ -20,6 +20,7 @@ interface CreateTaskRequest {
   assigned_to?: string | string[]
   due_date?: string
   note?: string
+  token_value?: number
   created_by: string
   recurrence_type?: 'once' | 'repeating'
   rotation_enabled?: boolean
@@ -46,7 +47,8 @@ export default async function handler(
       title, 
       assigned_to, 
       due_date, 
-      note, 
+      note,
+      token_value,
       created_by,
       recurrence_type,
       rotation_enabled,
@@ -83,6 +85,7 @@ export default async function handler(
       assigned_to: assignedToArray,
       due_date: due_date || null,
       note: note?.trim() || null,
+      token_value: token_value ?? 1,
       created_by,
       completed: false,
       recurrence_type: recurrence_type || 'once',
@@ -115,6 +118,7 @@ export default async function handler(
       entity_id: task.id,
       metadata: {
         title: task.title,
+        token_value: task.token_value,
         assignee_count: assignedToArray.length,
       },
     } as any)
