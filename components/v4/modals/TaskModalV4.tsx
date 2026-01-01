@@ -28,6 +28,7 @@ export function TaskModalV4({
   const [note, setNote] = useState('')
   const [tokenValue, setTokenValue] = useState<number>(1)
   const [recurrenceType, setRecurrenceType] = useState<RecurrenceType>('once')
+  const [rotationEnabled, setRotationEnabled] = useState(false)
   const [subtasks, setSubtasks] = useState<Array<{ id: string; title: string; completed: boolean }>>([])
   const [newSubtaskTitle, setNewSubtaskTitle] = useState('')
   const [isSaving, setIsSaving] = useState(false)
@@ -41,7 +42,7 @@ export function TaskModalV4({
       setNote(task.note || '')
       setTokenValue(task.token_value || 1)
       setRecurrenceType(task.recurrence_type || 'once')
-      // Load subtasks if available (placeholder for now)
+      setRotationEnabled(task.rotation_enabled || false)
       setSubtasks([])
       setNewSubtaskTitle('')
     } else {
@@ -51,6 +52,7 @@ export function TaskModalV4({
       setNote('')
       setTokenValue(1)
       setRecurrenceType('once')
+      setRotationEnabled(false)
       setSubtasks([])
       setNewSubtaskTitle('')
     }
@@ -78,6 +80,7 @@ export function TaskModalV4({
         note: note.trim() || undefined,
         token_value: tokenValue,
         recurrence_type: recurrenceType,
+        rotation_enabled: rotationEnabled,
       })
       onClose()
     } catch (err) {
@@ -159,29 +162,14 @@ export function TaskModalV4({
             <p className="text-xs text-slate-500 mt-1">{title.length}/100</p>
           </div>
 
-          {/* Assignees - Circles Style */}
+          {/* Assignees - Clean Circle Style */}
           <div>
-            <label className="block text-sm font-semibold text-slate-300 mb-3">
+            <label className="block text-sm font-semibold text-slate-300 mb-4">
               Assign to <span className="text-red-400">*</span>
             </label>
-            
-            {/* Selected assignees as circles */}
-            {assigneeIds.length > 0 && (
-              <div className="mb-4 p-4 bg-slate-900/30 rounded-xl border border-slate-700/50 flex items-center justify-between">
-                <div className="flex-1">
-                  <AssigneeCircles
-                    assigneeIds={assigneeIds}
-                    familyMembers={familyMembers}
-                    max={5}
-                    size="md"
-                  />
-                </div>
-                <span className="text-xs text-slate-400 ml-3">{assigneeIds.length} selected</span>
-              </div>
-            )}
 
-            {/* Assignee selector buttons */}
-            <div className="grid grid-cols-5 gap-2">
+            {/* Assignee selector - Just circles, clean */}
+            <div className="flex flex-wrap gap-3">
               {familyMembers.map(member => {
                 const isSelected = assigneeIds.includes(member.id)
                 return (
@@ -190,27 +178,43 @@ export function TaskModalV4({
                     type="button"
                     onClick={() => toggleAssignee(member.id)}
                     className={`
-                      w-full aspect-square rounded-xl flex flex-col items-center justify-center gap-1 transition-all text-xs
+                      w-14 h-14 rounded-full flex items-center justify-center font-bold text-white transition-all
                       ${
                         isSelected
-                          ? 'border-2 border-blue-500 bg-blue-500/20 shadow-lg shadow-blue-500/20'
-                          : 'border-2 border-slate-700/50 bg-slate-900/30 hover:border-slate-600'
+                          ? 'ring-2 ring-blue-500 ring-offset-2 ring-offset-slate-950 shadow-lg shadow-blue-500/30'
+                          : 'opacity-60 hover:opacity-100'
                       }
                     `}
+                    style={{ backgroundColor: member.color }}
+                    title={member.name}
                   >
-                    <div
-                      className="w-8 h-8 rounded-full flex items-center justify-center font-bold text-white"
-                      style={{ backgroundColor: member.color }}
-                    >
-                      {member.initials}
-                    </div>
-                    <span className="text-slate-400 font-medium">{member.initials}</span>
+                    {member.initials}
                   </button>
                 )
               })}
             </div>
-            {errors.assignees && <p className="text-red-400 text-sm mt-2">{errors.assignees}</p>}
+            {errors.assignees && <p className="text-red-400 text-sm mt-3">{errors.assignees}</p>}
           </div>
+
+          {/* Rotation */}
+          {recurrenceType === 'repeating' && (
+            <div>
+              <label className="flex items-center gap-3 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={rotationEnabled}
+                  onChange={e => setRotationEnabled(e.target.checked)}
+                  className="w-5 h-5 rounded cursor-pointer"
+                />
+                <span className="text-sm font-semibold text-slate-300">
+                  Enable automatic rotation
+                </span>
+              </label>
+              <p className="text-xs text-slate-400 mt-2">
+                Automatically assign to the next person each time the task repeats
+              </p>
+            </div>
+          )}
 
           {/* Token Value */}
           <div>
