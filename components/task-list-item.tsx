@@ -6,7 +6,6 @@ import { ChevronDown, ChevronUp, Repeat } from 'lucide-react'
 import { Task, Subtask, FamilyMember } from '@/types/huisos-v2'
 import { AssigneeCircles } from '@/components/assignee-circles'
 import { SubtaskProgressPie } from '@/components/subtask-progress-pie'
-import { getNextAssignee } from '@/lib/rotation-utils'
 
 interface TaskListItemProps {
   task: Task
@@ -54,9 +53,11 @@ export function TaskListItem({
 
   const isOverdue = daysUntilDue !== null && daysUntilDue < 0
   
-  // Check if task has rotation enabled
+  // Check if task has rotation enabled - use local logic instead of getNextAssignee
   const isRotating = task.rotation_enabled && task.recurrence_type === 'repeating'
-  const nextAssignee = isRotating ? getNextAssignee(task, familyMembers) : null
+  const nextAssignee = isRotating && task.rotation_index !== undefined && assigneeIds.length > 0
+    ? familyMembers.find(m => m.id === assigneeIds[task.rotation_index! % assigneeIds.length])
+    : null
 
   const handleCompleteSubtask = async (subtaskId: string) => {
     setCompletingSubtaskId(subtaskId)
