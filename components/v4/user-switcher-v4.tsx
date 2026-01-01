@@ -35,15 +35,15 @@ export function UserSwitcherButtonV4({
 
       {/* Fullscreen Modal */}
       {isOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
-          {/* Close backdrop */}
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm sm:flex sm:items-center sm:justify-center">
+          {/* Close backdrop - only on mobile */}
           <div
-            className="absolute inset-0"
+            className="absolute inset-0 sm:hidden"
             onClick={() => setIsOpen(false)}
           />
 
-          {/* Modal Content */}
-          <div className="relative w-full h-full max-w-md flex flex-col bg-slate-950/95 backdrop-blur-xl sm:rounded-3xl sm:max-h-[90vh] sm:border sm:border-slate-700/50 sm:shadow-2xl">
+          {/* Modal Content - Full height on mobile, centered box on desktop */}
+          <div className="relative w-full h-full sm:w-full sm:max-w-md sm:max-h-[90vh] flex flex-col bg-slate-950/95 backdrop-blur-xl sm:rounded-3xl sm:border sm:border-slate-700/50 sm:shadow-2xl">
             {/* Header */}
             <div className="flex-shrink-0 flex items-center justify-between p-6 border-b border-slate-800/50 bg-slate-950/95 backdrop-blur-xl z-10">
               <h2 className="text-xl font-bold text-white">Switch User</h2>
