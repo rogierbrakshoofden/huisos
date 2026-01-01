@@ -24,6 +24,7 @@ export interface Task {
   completed_date?: string
   due_date?: string
   note?: string
+  token_value?: number
   created_by?: string
   created_at: string
   updated_at: string
