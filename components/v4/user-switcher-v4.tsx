@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { FamilyMember } from '@/types/huisos-v2'
-import { Check, Users } from 'lucide-react'
+import { Check, Users, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 interface UserSwitcherButtonV4Props {
@@ -33,20 +33,30 @@ export function UserSwitcherButtonV4({
         )}
       </button>
 
-      {/* Modal */}
+      {/* Fullscreen Modal */}
       {isOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center pt-24 sm:pt-0">
-          {/* Backdrop */}
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+          {/* Close backdrop */}
           <div
-            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+            className="absolute inset-0"
             onClick={() => setIsOpen(false)}
           />
 
-          {/* Sheet */}
-          <div className="relative bg-slate-900/95 backdrop-blur-md rounded-3xl w-5/6 sm:max-w-md p-6 border border-slate-700/50 shadow-2xl max-h-[80vh] overflow-y-auto">
-            <h2 className="text-xl font-bold text-white mb-6">Switch User</h2>
+          {/* Modal Content */}
+          <div className="relative w-full h-full max-w-md max-h-screen flex flex-col bg-slate-950/95 backdrop-blur-xl sm:rounded-3xl sm:max-h-[80vh] sm:border sm:border-slate-700/50 sm:shadow-2xl">
+            {/* Header */}
+            <div className="sticky top-0 flex items-center justify-between p-6 border-b border-slate-800/50 bg-slate-950/95 backdrop-blur-xl z-10">
+              <h2 className="text-xl font-bold text-white">Switch User</h2>
+              <button
+                onClick={() => setIsOpen(false)}
+                className="p-2 hover:bg-slate-800/50 rounded-full transition-colors"
+              >
+                <X size={24} className="text-slate-400" />
+              </button>
+            </div>
 
-            <div className="space-y-3">
+            {/* Scrollable Content */}
+            <div className="flex-1 overflow-y-auto p-6 space-y-3">
               {familyMembers.map((member) => (
                 <button
                   key={member.id}
@@ -58,7 +68,7 @@ export function UserSwitcherButtonV4({
                     'w-full flex items-center gap-4 p-4 rounded-2xl transition-all',
                     activeUserId === member.id
                       ? 'bg-slate-800/60 border border-slate-700'
-                      : 'hover:bg-slate-800/30'
+                      : 'hover:bg-slate-800/30 border border-transparent'
                   )}
                 >
                   <div
@@ -67,13 +77,14 @@ export function UserSwitcherButtonV4({
                   >
                     {member.initials}
                   </div>
-                  <span className="text-white font-medium text-left">{member.name}</span>
+                  <span className="text-white font-medium text-left flex-1">{member.name}</span>
                   {activeUserId === member.id && (
-                    <Check className="w-5 h-5 text-emerald-400 ml-auto" />
+                    <Check className="w-5 h-5 text-emerald-400 flex-shrink-0" />
                   )}
                 </button>
               ))}
 
+              {/* Everybody Option */}
               <button
                 onClick={() => {
                   onUserChange('everybody')
@@ -83,15 +94,15 @@ export function UserSwitcherButtonV4({
                   'w-full flex items-center gap-4 p-4 rounded-2xl transition-all border-t border-slate-700/50 mt-4 pt-6',
                   activeUserId === 'everybody'
                     ? 'bg-slate-800/60 border border-slate-700'
-                    : 'hover:bg-slate-800/30'
+                    : 'hover:bg-slate-800/30 border border-transparent'
                 )}
               >
                 <div className="w-12 h-12 rounded-full bg-slate-700 flex items-center justify-center text-white flex-shrink-0">
                   <Users className="w-6 h-6" />
                 </div>
-                <span className="text-white font-medium">Everybody</span>
+                <span className="text-white font-medium text-left flex-1">Everybody</span>
                 {activeUserId === 'everybody' && (
-                  <Check className="w-5 h-5 text-emerald-400 ml-auto" />
+                  <Check className="w-5 h-5 text-emerald-400 flex-shrink-0" />
                 )}
               </button>
             </div>
