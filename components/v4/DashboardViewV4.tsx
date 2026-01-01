@@ -143,7 +143,7 @@ export function DashboardViewV4({
       )}
 
       {/* Main content area with proper spacing */}
-      <main className="max-w-2xl mx-auto px-4 pt-20 pb-28">
+      <main className="max-w-2xl mx-auto px-4 pt-4 pb-28">
         {state.activeTab === 'work' && (
           <WorkTabV4
             tasks={tasks}
