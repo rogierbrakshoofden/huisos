@@ -21,6 +21,7 @@ interface UpdateTaskRequest {
   assigned_to?: string | string[] | null
   due_date?: string | null
   note?: string | null
+  token_value?: number
   completed?: boolean
   completed_at?: string | null
   recurrence_type?: 'once' | 'repeating'
@@ -104,6 +105,9 @@ export default async function handler(
     if (updateData.note !== undefined) {
       updates.note = updateData.note?.trim() || null
     }
+    if (updateData.token_value !== undefined) {
+      updates.token_value = Math.max(0, updateData.token_value)
+    }
     if (updateData.completed !== undefined) {
       updates.completed = updateData.completed
     }
@@ -167,6 +171,7 @@ export default async function handler(
         entity_id: task.id,
         metadata: {
           title: task.title,
+          token_value: task.token_value,
         },
       } as any)
     }
