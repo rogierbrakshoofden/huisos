@@ -113,6 +113,17 @@ export default async function handler(
         })
       }
 
+      // Award tokens to the person who completed it
+      const tokenValue = task.token_value || 1
+      if (tokenValue > 0) {
+        await (supabase as any).from('tokens').insert({
+          member_id: completedBy,
+          amount: tokenValue,
+          reason: `Completed: ${task.title}`,
+          task_id: taskId,
+        } as any)
+      }
+
       // Log task completion
       await (supabase as any).from('activity_log').insert({
         actor_id: completedBy,
@@ -121,6 +132,7 @@ export default async function handler(
         entity_id: taskId,
         metadata: {
           title: task.title,
+          token_value_awarded: tokenValue,
         },
       } as any)
 
@@ -157,6 +169,17 @@ export default async function handler(
         })
       }
 
+      // Award tokens to the person who completed it
+      const tokenValue = task.token_value || 1
+      if (tokenValue > 0) {
+        await (supabase as any).from('tokens').insert({
+          member_id: completedBy,
+          amount: tokenValue,
+          reason: `Completed: ${task.title}`,
+          task_id: taskId,
+        } as any)
+      }
+
       // Log activity
       await (supabase as any).from('activity_log').insert({
         actor_id: completedBy,
@@ -165,6 +188,7 @@ export default async function handler(
         entity_id: taskId,
         metadata: {
           title: task.title,
+          token_value_awarded: tokenValue,
         },
       } as any)
 
