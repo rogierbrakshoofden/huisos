@@ -1,6 +1,7 @@
 import { HeaderV4 } from '@/components/v4/header-v4'
 import { BottomNavV4 } from '@/components/v4/bottom-nav-v4'
 import { SyncIndicatorV4 } from '@/components/v4/sync-indicator-v4'
+import { NotificationPermissionBanner } from '@/components/v4/notification-permission-banner'
 import { TaskModalV4 } from '@/components/v4/modals/TaskModalV4'
 import { EventModalV4 } from '@/components/v4/modals/EventModalV4'
 import { RewardStoreModalV4 } from '@/components/v4/modals/RewardStoreModalV4'
@@ -124,6 +125,9 @@ export function DashboardViewV4({
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950">
+      {/* Notification permission banner */}
+      <NotificationPermissionBanner />
+
       {/* Fixed header with safe area - accounts for notch + header */}
       <HeaderV4
         activeUserId={state.activeUserId}
