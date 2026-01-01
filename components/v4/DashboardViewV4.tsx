@@ -124,7 +124,7 @@ export function DashboardViewV4({
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950">
-      {/* Header with centered brand */}
+      {/* Fixed header - 64px tall (h-16) */}
       <HeaderV4
         activeUserId={state.activeUserId}
         familyMembers={state.familyMembers}
@@ -142,8 +142,8 @@ export function DashboardViewV4({
         </div>
       )}
 
-      {/* Main content area with proper spacing */}
-      <main className="max-w-2xl mx-auto px-4 pt-4 pb-28">
+      {/* Main content area - pt-16 accounts for fixed header (64px) */}
+      <main className="max-w-2xl mx-auto px-4 pt-20 pb-28">
         {state.activeTab === 'work' && (
           <WorkTabV4
             tasks={tasks}
