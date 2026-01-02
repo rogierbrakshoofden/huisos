@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react'
 import { X, Check, Trash2, Plus, GripVertical } from 'lucide-react'
 import { Task, FamilyMember, RecurrenceType, Subtask } from '@/types/huisos-v2'
-import { AssigneeCircles } from '@/components/assignee-circles'
 
 interface TaskModalV4Props {
   task?: Task | null
