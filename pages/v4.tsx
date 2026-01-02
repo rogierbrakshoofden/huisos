@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { DashboardContainerV4 } from '@/components/v4/DashboardContainerV4'
+import { DashboardContainerV4 } from '../components/v4/DashboardContainerV4'
 
 export default function V4Dashboard() {
   const [mounted, setMounted] = useState(false)
