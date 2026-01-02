@@ -14,19 +14,6 @@ export interface FamilyMember {
 export type RecurrenceType = 'once' | 'repeating'
 export type Frequency = 'daily' | 'every_two_days' | 'weekly' | 'monthly' | 'yearly'
 
-/**
- * Phase 8: Rotation Configuration
- * Enables automatic task rotation between family members
- */
-export interface RotationConfig {
-  enabled: boolean
-  pattern: 'weekly' | 'monthly' | 'custom'
-  rotation_order: string[] // member IDs in rotation order
-  current_index: number // current position in rotation
-  skip_members: string[] // member IDs to skip from rotation
-  rotation_start_date: string // ISO date string
-}
-
 export interface Task {
   id: string
   title: string
@@ -43,13 +30,11 @@ export interface Task {
   created_at: string
   updated_at: string
   subtasks?: Subtask[]
-  // Legacy rotation fields
+  // Rotation fields for legacy rotation system
   recurrence_type?: RecurrenceType
   rotation_enabled?: boolean
   rotation_index?: number
   rotation_exclude_ids?: string[]
-  // Phase 8 rotation fields
-  rotation_config?: RotationConfig
 }
 
 export interface Subtask {
@@ -96,7 +81,6 @@ export type ActionType =
   | 'task_delegated'
   | 'delegation_accepted'
   | 'delegation_declined'
-  | 'task_rotated'
   | 'assignees_updated'
 
 export type EntityType = 'task' | 'subtask' | 'event'
