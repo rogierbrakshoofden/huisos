@@ -1,7 +1,0 @@
-# Vercel build ignores
-node_modules
-.next
-.git
-
-# Phase 8 components are WIP future refactoring, not currently used
-components/v4/
