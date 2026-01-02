@@ -1,8 +1,6 @@
 import React, { useState } from 'react'
 import { ChevronDown, ChevronUp, Repeat } from 'lucide-react'
 import { Task, Subtask, FamilyMember } from '@/types/huisos-v2'
-import { AssigneeCircles } from '@/components/assignee-circles'
-import { SubtaskProgressPie } from '@/components/subtask-progress-pie'
 
 interface TaskListItemProps {
   task: Task
@@ -76,6 +74,75 @@ export function TaskListItem({
     }
   }
 
+  // Inline assignee circles component
+  const renderAssigneeCircles = () => {
+    const maxDisplay = 3
+    const displayIds = assigneeIds.slice(0, maxDisplay)
+    const remainingCount = Math.max(0, assigneeIds.length - maxDisplay)
+
+    return (
+      <div className="flex -space-x-2">
+        {displayIds.map((id) => {
+          const member = familyMembers.find(m => m.id === id)
+          if (!member) return null
+          return (
+            <div
+              key={id}
+              className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold border-2 border-slate-900"
+              style={{ backgroundColor: member.color }}
+              title={member.name}
+            >
+              {member.initials}
+            </div>
+          )
+        })}
+        {remainingCount > 0 && (
+          <div className="w-8 h-8 rounded-full flex items-center justify-center bg-slate-700 text-white text-xs font-bold border-2 border-slate-900">
+            +{remainingCount}
+          </div>
+        )}
+      </div>
+    )
+  }
+
+  // Inline progress pie component
+  const renderProgressPie = () => {
+    const percentage = subtasks.length > 0 ? (completedCount / subtasks.length) * 100 : 0
+    const radius = 16
+    const circumference = 2 * Math.PI * radius
+    const offset = circumference - (percentage / 100) * circumference
+
+    return (
+      <div className="relative w-10 h-10">
+        <svg className="w-full h-full transform -rotate-90">
+          <circle
+            cx="20"
+            cy="20"
+            r={radius}
+            stroke="currentColor"
+            strokeWidth="4"
+            fill="none"
+            className="text-slate-700"
+          />
+          <circle
+            cx="20"
+            cy="20"
+            r={radius}
+            stroke={assigneeColor}
+            strokeWidth="4"
+            fill="none"
+            strokeDasharray={circumference}
+            strokeDashoffset={offset}
+            className="transition-all duration-300"
+          />
+        </svg>
+        <div className="absolute inset-0 flex items-center justify-center text-xs font-bold text-white">
+          {completedCount}/{subtasks.length}
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div
       className={`
@@ -107,12 +174,7 @@ export function TaskListItem({
 
         {/* Assignee circles */}
         <div className="flex-shrink-0">
-          <AssigneeCircles
-            assigneeIds={assigneeIds}
-            familyMembers={familyMembers}
-            size="sm"
-            max={3}
-          />
+          {renderAssigneeCircles()}
         </div>
 
         {/* Task info */}
@@ -160,12 +222,7 @@ export function TaskListItem({
         {/* Progress pie */}
         {subtasks.length > 0 && (
           <div className="flex-shrink-0 cursor-pointer" onClick={() => setIsExpanded(!isExpanded)}>
-            <SubtaskProgressPie
-              completed={completedCount}
-              total={subtasks.length}
-              color={assigneeColor}
-              size="md"
-            />
+            {renderProgressPie()}
           </div>
         )}
 
