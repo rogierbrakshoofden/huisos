@@ -5,14 +5,14 @@ export default function Home() {
   const router = useRouter()
 
   useEffect(() => {
-    // Redirect to v3 (current production version)
-    router.replace('/v3')
+    // Redirect to v4 (current production version with PWA, glass design, bottom bar)
+    router.replace('/v4')
   }, [router])
 
   // Show loading state while redirecting
   return (
-    <div className="min-h-screen flex items-center justify-center bg-slate-950">
-      <p className="text-slate-400">Loading HuisOS...</p>
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950">
+      <div className="w-12 h-12 border-4 border-slate-700 border-t-slate-300 rounded-full animate-spin" />
     </div>
   )
 }
