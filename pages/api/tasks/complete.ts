@@ -2,7 +2,6 @@ import type { NextApiRequest, NextApiResponse } from 'next'
 import { createClient } from '@supabase/supabase-js'
 import type { Database } from '@/types/database'
 import { Task } from '@/types/huisos-v2'
-import { getNextRotationIndex } from '@/lib/rotation-utils'
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
@@ -19,6 +18,32 @@ const supabase = createClient<Database>(
 interface CompleteTaskRequest {
   taskId: string
   completedBy: string
+}
+
+// Inline rotation helper function
+function getNextRotationIndex(
+  currentIndex: number,
+  assigneeIds: string[],
+  excludeIds: string[] = []
+): number {
+  if (assigneeIds.length === 0) return 0
+  
+  let nextIndex = currentIndex + 1
+  let attempts = 0
+  const maxAttempts = assigneeIds.length
+
+  // Find the next non-excluded assignee
+  while (attempts < maxAttempts) {
+    const candidateId = assigneeIds[nextIndex % assigneeIds.length]
+    if (!excludeIds.includes(candidateId)) {
+      return nextIndex % assigneeIds.length
+    }
+    nextIndex++
+    attempts++
+  }
+
+  // If all are excluded, just return next index
+  return (currentIndex + 1) % assigneeIds.length
 }
 
 export default async function handler(
