@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { ChevronDown } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { TaskListItem } from '@/components/task-list-item'
+import { TaskListItem } from '@/components/v4/task-list-item'
 import { Task, FamilyMember, Subtask } from '@/types/huisos-v2'
 
 interface CompletedTasksDisclosureProps {
