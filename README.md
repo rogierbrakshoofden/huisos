@@ -61,3 +61,7 @@ types/
 - Legacy v2/v3 routes and components have been removed
 - All production functionality is in v4
 - Database schema defined in `supabase/migrations/`
+
+---
+
+**Build:** v1.0.0
