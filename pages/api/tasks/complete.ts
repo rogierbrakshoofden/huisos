@@ -61,6 +61,12 @@ export default async function handler(
       })
     }
 
+    // Extract household_id from request header
+    const householdId = req.headers['x-household-id'] as string
+    if (!householdId) {
+      return res.status(401).json({ error: 'Unauthorized: missing household ID' })
+    }
+
     const { taskId, completedBy }: CompleteTaskRequest = req.body
 
     if (!taskId) {
@@ -70,11 +76,12 @@ export default async function handler(
       return res.status(400).json({ error: 'completedBy is required' })
     }
 
-    // Fetch the task first
+    // Fetch the task first (with household_id check via RLS)
     const result: any = await (supabase as any)
       .from('tasks')
       .select()
       .eq('id', taskId)
+      .eq('household_id', householdId)
       .single()
 
     const taskData = result.data
@@ -120,11 +127,12 @@ export default async function handler(
       const previousAssignee = task.assigned_to[currentIndex]
       const nextAssignee = task.assigned_to[nextIndex]
 
-      // Update task
+      // Update task (RLS will enforce household isolation)
       const updateResult: any = await (supabase as any)
         .from('tasks')
         .update(updatePayload)
         .eq('id', taskId)
+        .eq('household_id', householdId)
         .select()
         .single()
 
@@ -146,6 +154,7 @@ export default async function handler(
           amount: tokenValue,
           reason: `Completed: ${task.title}`,
           task_id: taskId,
+          household_id: householdId,
         } as any)
       }
 
@@ -155,6 +164,7 @@ export default async function handler(
         action_type: 'task_completed',
         entity_type: 'task',
         entity_id: taskId,
+        household_id: householdId,
         metadata: {
           title: task.title,
           token_value_awarded: tokenValue,
@@ -167,6 +177,7 @@ export default async function handler(
         action_type: 'task_rotated',
         entity_type: 'task',
         entity_id: taskId,
+        household_id: householdId,
         metadata: {
           title: task.title,
           previous_assignee: previousAssignee,
@@ -181,6 +192,7 @@ export default async function handler(
         .from('tasks')
         .update(updatePayload)
         .eq('id', taskId)
+        .eq('household_id', householdId)
         .select()
         .single()
 
@@ -202,6 +214,7 @@ export default async function handler(
           amount: tokenValue,
           reason: `Completed: ${task.title}`,
           task_id: taskId,
+          household_id: householdId,
         } as any)
       }
 
@@ -211,6 +224,7 @@ export default async function handler(
         action_type: 'task_completed',
         entity_type: 'task',
         entity_id: taskId,
+        household_id: householdId,
         metadata: {
           title: task.title,
           token_value_awarded: tokenValue,
