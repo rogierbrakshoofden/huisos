@@ -43,6 +43,12 @@ export default async function handler(
       })
     }
 
+    // Extract household_id from request header
+    const householdId = req.headers['x-household-id'] as string
+    if (!householdId) {
+      return res.status(401).json({ error: 'Unauthorized: missing household ID' })
+    }
+
     const { 
       title, 
       assigned_to, 
@@ -79,7 +85,7 @@ export default async function handler(
       return res.status(400).json({ error: 'At least one assignee is required' })
     }
 
-    // Insert task - only use fields that exist in schema
+    // Insert task with household_id
     const insertPayload: any = {
       title: title.trim(),
       assigned_to: assignedToArray,
@@ -91,6 +97,7 @@ export default async function handler(
       rotation_enabled: rotation_enabled || false,
       rotation_exclude_ids: rotation_exclude_ids || [],
       rotation_index: rotation_index || 0,
+      household_id: householdId, // ← Add household_id to all inserts
     }
 
     const result: any = await (supabase as any)
@@ -115,6 +122,7 @@ export default async function handler(
       action_type: 'task_created',
       entity_type: 'task',
       entity_id: task.id,
+      household_id: householdId, // ← Add household_id to activity log
       metadata: {
         title: task.title,
         assignee_count: assignedToArray.length,
