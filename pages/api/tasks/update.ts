@@ -46,17 +46,24 @@ export default async function handler(
       })
     }
 
+    // Extract household_id from request header
+    const householdId = req.headers['x-household-id'] as string
+    if (!householdId) {
+      return res.status(401).json({ error: 'Unauthorized: missing household ID' })
+    }
+
     const { taskId, ...updateData }: UpdateTaskRequest = req.body
 
     if (!taskId) {
       return res.status(400).json({ error: 'taskId is required' })
     }
 
-    // Fetch original task for comparison
+    // Fetch original task for comparison (with household_id check)
     const fetchResult: any = await (supabase as any)
       .from('tasks')
       .select()
       .eq('id', taskId)
+      .eq('household_id', householdId)
       .single()
 
     const originalTask = fetchResult.data
@@ -124,11 +131,12 @@ export default async function handler(
       updates.rotation_index = updateData.rotation_index
     }
 
-    // Update task
+    // Update task (with household_id check)
     const result: any = await (supabase as any)
       .from('tasks')
       .update(updates)
       .eq('id', taskId)
+      .eq('household_id', householdId)
       .select()
       .single()
 
@@ -153,6 +161,7 @@ export default async function handler(
         action_type: 'assignees_updated',
         entity_type: 'task',
         entity_id: task.id,
+        household_id: householdId,
         metadata: {
           title: task.title,
           added,
@@ -166,6 +175,7 @@ export default async function handler(
         action_type: updateData.completed ? 'task_completed' : 'task_edited',
         entity_type: 'task',
         entity_id: task.id,
+        household_id: householdId,
         metadata: {
           title: task.title,
         },
