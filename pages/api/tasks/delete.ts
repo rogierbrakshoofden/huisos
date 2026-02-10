@@ -29,17 +29,24 @@ export default async function handler(
       })
     }
 
+    // Extract household_id from request header
+    const householdId = req.headers['x-household-id'] as string
+    if (!householdId) {
+      return res.status(401).json({ error: 'Unauthorized: missing household ID' })
+    }
+
     const { taskId, actorId } = req.body
 
     if (!taskId) {
       return res.status(400).json({ error: 'taskId is required' })
     }
 
-    // Delete task
+    // Delete task (with household_id check)
     const { error: taskError } = await supabase
       .from('tasks')
       .delete()
       .eq('id', taskId)
+      .eq('household_id', householdId)
 
     if (taskError) {
       console.error('❌ Task delete error:', taskError)
@@ -55,6 +62,7 @@ export default async function handler(
         action_type: 'task_deleted',
         entity_type: 'task',
         entity_id: taskId,
+        household_id: householdId,
         metadata: {},
       } as any)
     }
