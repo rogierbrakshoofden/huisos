@@ -46,11 +46,11 @@ export default async function handler(
       return res.status(400).json({ error: 'subtaskIds array is required' })
     }
 
-    // Update order field for each subtask
+    // Update order_index field for each subtask
     for (let i = 0; i < subtaskIds.length; i++) {
       const { error } = await supabase
         .from('subtasks')
-        .update({ order: i })
+        .update({ order_index: i })
         .eq('id', subtaskIds[i])
         .eq('household_id', householdId)
 
