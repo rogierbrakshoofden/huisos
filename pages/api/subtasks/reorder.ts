@@ -1,6 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from 'next'
 import { createClient } from '@supabase/supabase-js'
-import type { Database } from '@/types/database'
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
@@ -9,7 +8,7 @@ if (!supabaseUrl || !supabaseServiceKey) {
   console.error('❌ Missing Supabase env vars in /api/subtasks/reorder')
 }
 
-const supabase = createClient<Database>(
+const supabase = createClient(
   supabaseUrl || '',
   supabaseServiceKey || ''
 )
@@ -50,7 +49,7 @@ export default async function handler(
     for (let i = 0; i < subtaskIds.length; i++) {
       const { error } = await supabase
         .from('subtasks')
-        .update({ order_index: i })
+        .update({ order_index: i } as any)
         .eq('id', subtaskIds[i])
         .eq('household_id', householdId)
 
@@ -64,7 +63,7 @@ export default async function handler(
 
     // Log activity
     if (actorId) {
-      await (supabase as any).from('activity_log').insert({
+      await supabase.from('activity_log').insert({
         actor_id: actorId,
         action_type: 'subtasks_reordered',
         entity_type: 'subtask',
