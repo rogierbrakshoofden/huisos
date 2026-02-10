@@ -2,23 +2,9 @@
 import { useEffect, useRef, useCallback } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useApp } from '@/lib/context-v2'
-import { getHouseholdId } from '@/lib/passcode'
 import type { Subtask } from '@/types/huisos-v2'
 
 const POLL_INTERVAL = 30000 // 30 seconds
-
-// Helper to add household_id header to all Supabase queries
-const withHouseholdId = (query: any) => {
-  const householdId = getHouseholdId()
-  if (!householdId) {
-    console.error('❌ No household ID found in localStorage')
-    return query
-  }
-  console.log('✓ Adding household_id header to query:', householdId.substring(0, 8))
-  return query.headers({
-    'x-household-id': householdId,
-  })
-}
 
 export function useRealtimeSync() {
   const { state, dispatch } = useApp()
@@ -35,12 +21,11 @@ export function useRealtimeSync() {
     try {
       // Load family members
       console.log('📍 Loading family_members...')
-      const { data: members, error: membersError } = await withHouseholdId(
-        supabase
-          .from('family_members')
-          .select('*')
-          .order('name', { ascending: true })
-      )
+      const { data: members, error: membersError } = await supabase
+        .from('family_members')
+        .select('*')
+        .order('name', { ascending: true })
+      
       console.log('family_members result:', members?.length || 0, 'rows', membersError)
       if (members) {
         dispatch({ type: 'SET_FAMILY_MEMBERS', payload: members as any })
@@ -48,13 +33,12 @@ export function useRealtimeSync() {
 
       // Load tasks
       console.log('📍 Loading tasks...')
-      const { data: tasks, error: tasksError } = await withHouseholdId(
-        supabase
-          .from('tasks')
-          .select('*')
-          .order('completed', { ascending: true })
-          .order('created_at', { ascending: false })
-      )
+      const { data: tasks, error: tasksError } = await supabase
+        .from('tasks')
+        .select('*')
+        .order('completed', { ascending: true })
+        .order('created_at', { ascending: false })
+      
       console.log('tasks result:', tasks?.length || 0, 'rows', tasksError)
       if (tasks) {
         dispatch({ type: 'SET_TASKS', payload: tasks as any })
@@ -62,13 +46,12 @@ export function useRealtimeSync() {
 
       // Load subtasks for all tasks
       console.log('📍 Loading subtasks...')
-      const { data: subtasks, error: subtasksError } = await withHouseholdId(
-        supabase
-          .from('subtasks')
-          .select('*')
-          .order('parent_task_id')
-          .order('order_index', { ascending: true })
-      )
+      const { data: subtasks, error: subtasksError } = await supabase
+        .from('subtasks')
+        .select('*')
+        .order('parent_task_id')
+        .order('order_index', { ascending: true })
+      
       console.log('subtasks result:', subtasks?.length || 0, 'rows', subtasksError)
       if (subtasks && subtasks.length > 0) {
         // Group subtasks by parent_task_id
@@ -91,12 +74,11 @@ export function useRealtimeSync() {
 
       // Load events
       console.log('📍 Loading events...')
-      const { data: events, error: eventsError } = await withHouseholdId(
-        supabase
-          .from('events')
-          .select('*')
-          .order('datetime', { ascending: true })
-      )
+      const { data: events, error: eventsError } = await supabase
+        .from('events')
+        .select('*')
+        .order('datetime', { ascending: true })
+      
       console.log('events result:', events?.length || 0, 'rows', eventsError)
       if (events) {
         dispatch({ type: 'SET_EVENTS', payload: events as any })
@@ -104,13 +86,12 @@ export function useRealtimeSync() {
 
       // Load activity log
       console.log('📍 Loading activity_log...')
-      const { data: activityLog, error: logError } = await withHouseholdId(
-        supabase
-          .from('activity_log')
-          .select('*, actor:family_members(*)')
-          .order('created_at', { ascending: false })
-          .limit(100)
-      )
+      const { data: activityLog, error: logError } = await supabase
+        .from('activity_log')
+        .select('*, actor:family_members(*)')
+        .order('created_at', { ascending: false })
+        .limit(100)
+      
       console.log('activity_log result:', activityLog?.length || 0, 'rows', logError)
       if (activityLog) {
         dispatch({ type: 'SET_ACTIVITY_LOG', payload: activityLog as any })
@@ -118,13 +99,12 @@ export function useRealtimeSync() {
 
       // Load rewards
       console.log('📍 Loading rewards...')
-      const { data: rewards, error: rewardsError } = await withHouseholdId(
-        supabase
-          .from('rewards')
-          .select('*')
-          .eq('active', true)
-          .order('token_cost', { ascending: true })
-      )
+      const { data: rewards, error: rewardsError } = await supabase
+        .from('rewards')
+        .select('*')
+        .eq('active', true)
+        .order('token_cost', { ascending: true })
+      
       console.log('rewards result:', rewards?.length || 0, 'rows', rewardsError)
       if (rewards) {
         state.rewards = rewards as any
@@ -132,12 +112,11 @@ export function useRealtimeSync() {
 
       // Load reward claims
       console.log('📍 Loading reward_claims...')
-      const { data: rewardClaims, error: claimsError } = await withHouseholdId(
-        supabase
-          .from('reward_claims')
-          .select('*')
-          .order('redeemed_at', { ascending: false })
-      )
+      const { data: rewardClaims, error: claimsError } = await supabase
+        .from('reward_claims')
+        .select('*')
+        .order('redeemed_at', { ascending: false })
+      
       console.log('reward_claims result:', rewardClaims?.length || 0, 'rows', claimsError)
       if (rewardClaims) {
         dispatch({ type: 'SET_REWARD_CLAIMS', payload: rewardClaims as any })
@@ -158,12 +137,6 @@ export function useRealtimeSync() {
   }, [dispatch])
 
   const setupRealtimeSubscriptions = useCallback(() => {
-    const householdId = getHouseholdId()
-    if (!householdId) {
-      console.error('❌ No household ID for realtime subscriptions')
-      return
-    }
-
     // Subscribe to task changes
     const tasksSub = supabase
       .channel('tasks')
@@ -176,13 +149,12 @@ export function useRealtimeSync() {
         },
         async () => {
           try {
-            const { data: tasks } = await withHouseholdId(
-              supabase
-                .from('tasks')
-                .select('*')
-                .order('completed', { ascending: true })
-                .order('created_at', { ascending: false })
-            )
+            const { data: tasks } = await supabase
+              .from('tasks')
+              .select('*')
+              .order('completed', { ascending: true })
+              .order('created_at', { ascending: false })
+            
             if (tasks) {
               dispatch({ type: 'SET_TASKS', payload: tasks as any })
             }
@@ -217,13 +189,11 @@ export function useRealtimeSync() {
               return
             }
 
-            const { data: subtasks, error } = await withHouseholdId(
-              supabase
-                .from('subtasks')
-                .select('*')
-                .eq('parent_task_id', parentTaskId)
-                .order('order_index', { ascending: true })
-            )
+            const { data: subtasks, error } = await supabase
+              .from('subtasks')
+              .select('*')
+              .eq('parent_task_id', parentTaskId)
+              .order('order_index', { ascending: true })
             
             if (error) {
               console.error('Error fetching subtasks:', error)
@@ -266,12 +236,11 @@ export function useRealtimeSync() {
         },
         async () => {
           try {
-            const { data: events } = await withHouseholdId(
-              supabase
-                .from('events')
-                .select('*')
-                .order('datetime', { ascending: true })
-            )
+            const { data: events } = await supabase
+              .from('events')
+              .select('*')
+              .order('datetime', { ascending: true })
+            
             if (events) {
               dispatch({ type: 'SET_EVENTS', payload: events as any })
             }
@@ -296,13 +265,12 @@ export function useRealtimeSync() {
         },
         async (payload) => {
           try {
-            const result = await withHouseholdId(
-              supabase
-                .from('activity_log')
-                .select('*, actor:family_members(*)')
-                .eq('id', (payload.new as any).id)
-            )
-            const data = result.data?.[0]
+            const { data } = await supabase
+              .from('activity_log')
+              .select('*, actor:family_members(*)')
+              .eq('id', (payload.new as any).id)
+              .single()
+            
             if (data) {
               dispatch({ type: 'ADD_LOG_ENTRY', payload: data as any })
             }
@@ -327,12 +295,11 @@ export function useRealtimeSync() {
         },
         async () => {
           try {
-            const { data: rewardClaims } = await withHouseholdId(
-              supabase
-                .from('reward_claims')
-                .select('*')
-                .order('redeemed_at', { ascending: false })
-            )
+            const { data: rewardClaims } = await supabase
+              .from('reward_claims')
+              .select('*')
+              .order('redeemed_at', { ascending: false })
+            
             if (rewardClaims) {
               dispatch({ type: 'SET_REWARD_CLAIMS', payload: rewardClaims as any })
             }
@@ -363,24 +330,21 @@ export function useRealtimeSync() {
       if (!state.isOnline) return
 
       try {
-        const { data: tasks } = await withHouseholdId(
-          supabase
-            .from('tasks')
-            .select('*')
-            .order('completed', { ascending: true })
-            .order('created_at', { ascending: false })
-        )
+        const { data: tasks } = await supabase
+          .from('tasks')
+          .select('*')
+          .order('completed', { ascending: true })
+          .order('created_at', { ascending: false })
+        
         if (tasks) {
           dispatch({ type: 'SET_TASKS', payload: tasks as any })
         }
 
-        const { data: subtasks } = await withHouseholdId(
-          supabase
-            .from('subtasks')
-            .select('*')
-            .order('parent_task_id')
-            .order('order_index', { ascending: true })
-        )
+        const { data: subtasks } = await supabase
+          .from('subtasks')
+          .select('*')
+          .order('parent_task_id')
+          .order('order_index', { ascending: true })
         
         if (subtasks && subtasks.length >= 0) {
           const subtasksByTask = new Map<string, Subtask[]>()
