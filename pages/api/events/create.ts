@@ -17,11 +17,12 @@ const supabase = createClient<Database>(
 
 interface CreateEventRequest {
   title: string
-  datetime?: string
-  all_day: boolean
+  datetime?: string | null
+  all_day?: boolean
   member_ids: string[]
   recurring?: string | null
-  notes?: string
+  recurring_end?: string | null
+  notes?: string | null
   created_by: string
 }
 
@@ -40,35 +41,40 @@ export default async function handler(
       })
     }
 
+    // Extract household_id from request header
+    const householdId = req.headers['x-household-id'] as string
+    if (!householdId) {
+      return res.status(401).json({ error: 'Unauthorized: missing household ID' })
+    }
+
     const {
       title,
       datetime,
       all_day,
       member_ids,
       recurring,
+      recurring_end,
       notes,
       created_by,
     }: CreateEventRequest = req.body
 
-    // Validation
     if (!title?.trim()) {
       return res.status(400).json({ error: 'Title is required' })
     }
-    if (!datetime && !all_day) {
-      return res.status(400).json({ error: 'Datetime is required for non-all-day events' })
-    }
-    if (!member_ids || member_ids.length === 0) {
+
+    if (!Array.isArray(member_ids) || member_ids.length === 0) {
       return res.status(400).json({ error: 'At least one member is required' })
     }
 
-    // Insert event - cast payload to any
     const insertPayload: any = {
       title: title.trim(),
       datetime: datetime || null,
-      all_day,
+      all_day: all_day || false,
       member_ids,
       recurring: recurring || null,
+      recurring_end: recurring_end || null,
       notes: notes?.trim() || null,
+      household_id: householdId,
     }
 
     const result: any = await (supabase as any)
@@ -77,17 +83,15 @@ export default async function handler(
       .select()
       .single()
 
-    const eventData = result.data
+    const event = result.data
     const eventError = result.error
 
-    if (eventError || !eventData) {
+    if (eventError || !event) {
       console.error('❌ Event insert error:', eventError)
       return res.status(500).json({
         error: eventError?.message || 'Failed to create event',
       })
     }
-
-    const event = eventData as Event
 
     // Log activity
     await (supabase as any).from('activity_log').insert({
@@ -95,20 +99,18 @@ export default async function handler(
       action_type: 'event_created',
       entity_type: 'event',
       entity_id: event.id,
+      household_id: householdId,
       metadata: {
         title: event.title,
-        datetime: event.datetime,
+        member_count: member_ids.length,
       },
     } as any)
 
-    return res.status(201).json(event)
+    return res.status(201).json(event as Event)
   } catch (err) {
     console.error('❌ API error in /api/events/create:', err)
     return res.status(500).json({
-      error:
-        err instanceof Error
-          ? err.message
-          : 'Internal server error',
+      error: err instanceof Error ? err.message : 'Internal server error',
     })
   }
 }
