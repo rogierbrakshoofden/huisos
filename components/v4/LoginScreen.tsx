@@ -18,7 +18,7 @@ export function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
     setLoading(true)
 
     try {
-      loginWithPasscode(code)
+      await loginWithPasscode(code) // Now async!
       onLoginSuccess()
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Invalid code')
