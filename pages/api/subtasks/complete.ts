@@ -3,69 +3,86 @@ import { createClient } from '@supabase/supabase-js'
 import type { Database } from '@/types/database'
 import { Subtask } from '@/types/huisos-v2'
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
 
-const supabase = createClient<Database>(supabaseUrl, supabaseServiceKey)
+if (!supabaseUrl || !supabaseServiceKey) {
+  console.error('❌ Missing Supabase env vars in /api/subtasks/complete')
+}
+
+const supabase = createClient<Database>(
+  supabaseUrl || '',
+  supabaseServiceKey || ''
+)
 
 interface CompleteSubtaskRequest {
-  subtask_id: string
-  completed_by: string
+  subtaskId: string
+  completed: boolean
+  completedBy: string
 }
 
 export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse<Subtask | { error: string }>
 ) {
-  if (req.method !== 'POST') {
+  if (req.method !== 'PUT') {
     return res.status(405).json({ error: 'Method not allowed' })
   }
 
   try {
-    const { subtask_id, completed_by }: CompleteSubtaskRequest = req.body
-
-    if (!subtask_id) {
-      return res.status(400).json({ error: 'subtask_id is required' })
-    }
-    if (!completed_by) {
-      return res.status(400).json({ error: 'completed_by is required' })
+    if (!supabaseUrl || !supabaseServiceKey) {
+      return res.status(500).json({
+        error: 'Server configuration error: Missing Supabase credentials.',
+      })
     }
 
-    // Mark subtask as completed
+    // Extract household_id from request header
+    const householdId = req.headers['x-household-id'] as string
+    if (!householdId) {
+      return res.status(401).json({ error: 'Unauthorized: missing household ID' })
+    }
+
+    const { subtaskId, completed, completedBy }: CompleteSubtaskRequest = req.body
+
+    if (!subtaskId) {
+      return res.status(400).json({ error: 'subtaskId is required' })
+    }
+
     const result: any = await (supabase as any)
       .from('subtasks')
-      .update({
-        completed: true,
-        completed_at: new Date().toISOString(),
-        completed_by: completed_by,
-      })
-      .eq('id', subtask_id)
+      .update({ completed })
+      .eq('id', subtaskId)
+      .eq('household_id', householdId)
       .select()
       .single()
 
     const subtask = result.data
-    const updateError = result.error
+    const subtaskError = result.error
 
-    if (updateError || !subtask) {
-      console.error('Subtask completion error:', updateError)
-      return res.status(500).json({ error: 'Failed to complete subtask' })
+    if (subtaskError || !subtask) {
+      console.error('❌ Subtask update error:', subtaskError)
+      return res.status(500).json({
+        error: subtaskError?.message || 'Failed to update subtask',
+      })
     }
 
-    // Log activity - no tokens awarded for subtasks
+    // Log activity
     await (supabase as any).from('activity_log').insert({
-      actor_id: completed_by,
-      action_type: 'subtask_completed',
+      actor_id: completedBy,
+      action_type: completed ? 'subtask_completed' : 'subtask_reopened',
       entity_type: 'subtask',
       entity_id: subtask.id,
+      household_id: householdId,
       metadata: {
-        parent_task_id: subtask.parent_task_id,
         title: subtask.title,
       },
     } as any)
 
     return res.status(200).json(subtask as Subtask)
   } catch (err) {
-    console.error('API error:', err)
-    return res.status(500).json({ error: 'Internal server error' })
+    console.error('❌ API error in /api/subtasks/complete:', err)
+    return res.status(500).json({
+      error: err instanceof Error ? err.message : 'Internal server error',
+    })
   }
 }

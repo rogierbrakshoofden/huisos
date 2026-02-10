@@ -3,17 +3,23 @@ import { createClient } from '@supabase/supabase-js'
 import type { Database } from '@/types/database'
 import { Subtask } from '@/types/huisos-v2'
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
 
-const supabase = createClient<Database>(supabaseUrl, supabaseServiceKey)
+if (!supabaseUrl || !supabaseServiceKey) {
+  console.error('❌ Missing Supabase env vars in /api/subtasks/update')
+}
+
+const supabase = createClient<Database>(
+  supabaseUrl || '',
+  supabaseServiceKey || ''
+)
 
 interface UpdateSubtaskRequest {
-  subtask_id: string
+  subtaskId: string
   title?: string
-  description?: string
-  order_index?: number
-  updated_by?: string
+  completed?: boolean
+  [key: string]: any
 }
 
 export default async function handler(
@@ -25,69 +31,69 @@ export default async function handler(
   }
 
   try {
-    const { subtask_id, title, description, order_index, updated_by }: UpdateSubtaskRequest = req.body
-
-    if (!subtask_id) {
-      return res.status(400).json({ error: 'subtask_id is required' })
+    if (!supabaseUrl || !supabaseServiceKey) {
+      return res.status(500).json({
+        error: 'Server configuration error: Missing Supabase credentials.',
+      })
     }
 
-    // Validate title if provided
-    if (title !== undefined) {
-      if (!title?.trim()) {
-        return res.status(400).json({ error: 'Title cannot be empty' })
-      }
-      if (title.length > 255) {
-        return res.status(400).json({ error: 'Title must be 255 characters or less' })
-      }
+    // Extract household_id from request header
+    const householdId = req.headers['x-household-id'] as string
+    if (!householdId) {
+      return res.status(401).json({ error: 'Unauthorized: missing household ID' })
     }
 
-    // Validate order_index if provided
-    if (order_index !== undefined) {
-      if (order_index < 0) {
-        return res.status(400).json({ error: 'order_index must be >= 0' })
-      }
+    const { subtaskId, ...updateData }: UpdateSubtaskRequest = req.body
+
+    if (!subtaskId) {
+      return res.status(400).json({ error: 'subtaskId is required' })
     }
 
-    // Build update payload
-    const updatePayload: any = {}
-    if (title !== undefined) updatePayload.title = title.trim()
-    if (description !== undefined) updatePayload.description = description?.trim() || null
-    if (order_index !== undefined) updatePayload.order_index = order_index
+    const updates: Record<string, any> = {}
 
-    // Update subtask
+    if (updateData.title !== undefined) {
+      updates.title = updateData.title?.trim() || ''
+    }
+    if (updateData.completed !== undefined) {
+      updates.completed = updateData.completed
+    }
+
     const result: any = await (supabase as any)
       .from('subtasks')
-      .update(updatePayload)
-      .eq('id', subtask_id)
+      .update(updates)
+      .eq('id', subtaskId)
+      .eq('household_id', householdId)
       .select()
       .single()
 
     const subtask = result.data
-    const updateError = result.error
+    const subtaskError = result.error
 
-    if (updateError || !subtask) {
-      console.error('Subtask update error:', updateError)
-      return res.status(500).json({ error: 'Failed to update subtask' })
+    if (subtaskError || !subtask) {
+      console.error('❌ Subtask update error:', subtaskError)
+      return res.status(500).json({
+        error: subtaskError?.message || 'Failed to update subtask',
+      })
     }
 
-    // Log activity if meaningful changes
-    // BUG FIX #3: Add title to metadata
-    if (Object.keys(updatePayload).length > 0) {
-      await (supabase as any).from('activity_log').insert({
-        actor_id: updated_by || 'system',
-        action_type: 'subtask_edited',
-        entity_type: 'subtask',
-        entity_id: subtask.id,
-        metadata: {
-          title: subtask.title,
-          changes: updatePayload,
-        },
-      } as any)
-    }
+    // Log activity
+    const actorId = updateData.updated_by || 'system'
+    await (supabase as any).from('activity_log').insert({
+      actor_id: actorId,
+      action_type: 'subtask_edited',
+      entity_type: 'subtask',
+      entity_id: subtask.id,
+      household_id: householdId,
+      metadata: {
+        title: subtask.title,
+      },
+    } as any)
 
     return res.status(200).json(subtask as Subtask)
   } catch (err) {
-    console.error('API error:', err)
-    return res.status(500).json({ error: 'Internal server error' })
+    console.error('❌ API error in /api/subtasks/update:', err)
+    return res.status(500).json({
+      error: err instanceof Error ? err.message : 'Internal server error',
+    })
   }
 }
